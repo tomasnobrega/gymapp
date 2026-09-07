@@ -71,6 +71,28 @@
   .set-h.time,.set.time{grid-template-columns:34px 1fr 44px}
   .addset{margin-top:8px;font-size:13px;color:var(--accent);font-weight:600;padding:6px 2px}
 
+  /* ---------- ciclo ---------- */
+  .cycle{border-color:rgba(57,135,229,.35)}
+  .cycle .k{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+  .cycle .big{font-size:18px;font-weight:700;margin-top:2px}
+  .cycle select{height:38px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);padding:0 10px;font-size:13px;font-weight:600;outline:none;max-width:150px}
+  .weekbar{display:flex;gap:4px;margin-top:10px}
+  .weekbar i{flex:1;height:6px;border-radius:3px;background:var(--border)}
+  .weekbar i.past{background:rgba(57,135,229,.45)}
+  .weekbar i.cur{background:var(--accent)}
+  .plan-wrap{margin-top:10px}
+  .plan-wrap summary{font-size:13px;color:var(--accent);font-weight:600;cursor:pointer;list-style:none;padding:4px 0}
+  .plan-wrap summary::-webkit-details-marker{display:none}
+  .plan-wrap summary::before{content:"▸ ";color:var(--faint)}
+  .plan-wrap[open] summary::before{content:"▾ "}
+  table.plan{margin-top:6px}
+  table.plan td,table.plan th{padding:7px 5px;font-size:12px}
+  table.plan tr.cur td{background:var(--accent-soft)}
+  table.plan tr.cur td:first-child{border-radius:6px 0 0 6px} table.plan tr.cur td:last-child{border-radius:0 6px 6px 0}
+  .banner.warn{background:var(--warn-soft);color:#f3cf7a}
+  .set .n.lbl{font-size:10px;letter-spacing:.04em;color:var(--warn);font-weight:700}
+  .sess .wk{color:#cfe1fb;font-weight:600}
+
   /* ---------- finisher ---------- */
   .fin{border-color:rgba(237,161,0,.35);background:linear-gradient(160deg,#1b1a17,var(--surface) 60%)}
   .fin .badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:6px;margin-bottom:6px}
@@ -201,7 +223,9 @@
    - time: [min, max]  -> exercício por tempo em segundos (prancha)
    - alt: variantes; cada uma vira um exercício separado no histórico
    - each: "cada perna" etc. (só rótulo)
-   - finisher: bloco de cardio com peso no fim (score 'time' ou 'rounds')
+   - iso: true  -> isolado/acessório (faixa de reps mais alta no ciclo)
+   - cat: 'fixed' -> não muda com a semana do ciclo (mantém sets/reps)
+   - finisher: cardio com peso no fim; 'weeks' = formato em cada semana
    ===================================================================== */
 const WORKOUTS = [
   {
@@ -225,6 +249,7 @@ const WORKOUTS = [
       ],
       loads: 'KB · halteres · farmer',
       tip: 'Ritmo constante, sem parar. Se sobrar gás no fim, sobe o KB na próxima.',
+      weeks: ['3 rounds · cap 12 min', '3 rounds · sobe o KB', '4 rounds · cap 15 min', '4 rounds · sobe os halteres', '5 rounds · cap 18 min', '2 rounds leves · sem relógio'],
     },
   },
   {
@@ -235,9 +260,9 @@ const WORKOUTS = [
       { name: 'Stiff / terra romeno', sets: 3, reps: [8, 10] },
       { name: 'Puxada alta (pulldown)', sets: 3, reps: [10, 10] },
       { name: 'Afundo', alt: ['Afundo', 'Leg press unilateral'], sets: 3, reps: [10, 10], each: 'cada perna' },
-      { name: 'Elevação lateral', sets: 3, reps: [12, 15] },
-      { name: 'Rosca direta', sets: 2, reps: [12, 12] },
-      { name: 'Core', alt: [ { name: 'Abdominal', reps: [15, 20] }, { name: 'Prancha lateral', time: [30, 45], each: 'cada lado' } ], sets: 3 },
+      { name: 'Elevação lateral', sets: 3, reps: [12, 15], iso: true },
+      { name: 'Rosca direta', sets: 2, reps: [12, 12], iso: true },
+      { name: 'Core', alt: [ { name: 'Abdominal', reps: [15, 20], cat: 'fixed' }, { name: 'Prancha lateral', time: [30, 45], each: 'cada lado' } ], sets: 3 },
     ],
     finisher: {
       name: 'WOD', format: 'AMRAP 10 min', cap: '10 min', score: 'rounds',
@@ -249,9 +274,30 @@ const WORKOUTS = [
       ],
       loads: 'halteres · KB',
       tip: 'Anote rounds + reps extras. Meta: bater o mesmo número de rounds com carga maior.',
+      weeks: ['AMRAP 10 min', 'AMRAP 10 min · meta: +1 round', 'AMRAP 12 min', 'AMRAP 12 min · sobe a carga', 'AMRAP 15 min', 'AMRAP 8 min leve · ritmo de conversa'],
     },
   },
 ];
+
+/* =====================================================================
+   CICLO DE 6 SEMANAS — periodização aplicada em cima dos treinos acima
+   comp = compostos (padrão), iso = isolados, timeBonus = +s em prancha
+   ===================================================================== */
+const PHASES = [
+  { week: 1, name: 'Base', comp: { sets: 3, reps: [10, 12] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: 60, rpe: 'RPE 7 · 3 reps na reserva',
+    technique: { title: 'Tempo controlado', desc: '3 s na descida, sobe forte. Carga moderada: a ideia é acumular volume com técnica limpa e deixar margem pra crescer.' } },
+  { week: 2, name: 'Base +', comp: { sets: 3, reps: [10, 12] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 5, rest: 75, rpe: 'RPE 8 · 2 reps na reserva',
+    technique: { title: 'Última série AMRAP', desc: 'Mesma carga da semana 1 (+1 degrau se bateu o topo). Na última série de cada exercício vai até 1 rep na reserva e anota quantas saíram.' }, lastLabel: 'AMRAP' },
+  { week: 3, name: 'Volume', comp: { sets: 4, reps: [8, 10] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 10, rest: 90, rpe: 'RPE 8',
+    technique: { title: 'Série extra + pausa', desc: '4 séries nos compostos e menos reps: sobe a carga. 1 s de pausa no ponto mais difícil (fundo do agacho, barra no peito).' } },
+  { week: 4, name: 'Força', comp: { sets: 4, reps: [6, 8] }, iso: { sets: 4, reps: [10, 12] }, timeBonus: 15, rest: 120, rpe: 'RPE 8–9',
+    technique: { title: 'Rest-pause na última', desc: 'Carga sobe de novo. Na última série chega perto da falha, descansa 15 s e faz mais 2–4 reps com a mesma carga.' }, lastLabel: 'RP' },
+  { week: 5, name: 'Pico', comp: { sets: 4, reps: [4, 6] }, iso: { sets: 4, reps: [8, 10] }, timeBonus: 15, rest: 180, rpe: 'RPE 9 · 1 rep na reserva',
+    technique: { title: 'Top set + back-off', desc: '1ª série pesada de 4–6 reps (top set). Depois 3 séries de back-off com −10 % da carga, 6–8 reps. Descanso longo, o objetivo é o recorde.' }, scheme: 'topset', backoff: { pct: 0.9, reps: [6, 8] } },
+  { week: 6, name: 'Deload', comp: { sets: 2, reps: [8, 10] }, iso: { sets: 2, reps: [12, 15] }, timeBonus: 0, rest: 90, rpe: 'RPE 6 · longe da falha',
+    technique: { title: 'Recuperação', desc: '−30 % de carga, metade do volume, técnica perfeita. Finisher leve. Fim do ciclo: manda os treinos novos pro próximo bloco.' }, loadPct: 0.7 },
+];
+const CYCLE_WEEKS = PHASES.length;
 
 /* ===================================================================== */
 /* ===== estado & storage ===== */
@@ -260,7 +306,9 @@ const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSO
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 let DB = load(LS_DB, { version: 1, sessions: [] });
-let CFG = Object.assign({ step: 2.5, rest: 90 }, load(LS_CFG, {}));
+let CFG = Object.assign({ step: 2.5, cycleStart: null }, load(LS_CFG, {}));
+if (!CFG.cycleStart) { CFG.cycleStart = todayISOInit(); save(LS_CFG, CFG); }
+function todayISOInit() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 let draft = load(LS_DRAFT, null);
 let tab = 'train';
 let progressKey = null;
@@ -284,16 +332,43 @@ function variants(ex) {
   const list = ex.alt ? ex.alt : [ex.name];
   return list.map(v => {
     const o = typeof v === 'string' ? { name: v } : v;
-    return { name: o.name, sets: o.sets ?? ex.sets ?? 3, reps: o.reps ?? (o.time ? null : ex.reps), time: o.time ?? (o.reps ? null : ex.time), each: o.each ?? ex.each };
+    return { name: o.name, sets: o.sets ?? ex.sets ?? 3, reps: o.reps ?? (o.time ? null : ex.reps), time: o.time ?? (o.reps ? null : ex.time), each: o.each ?? ex.each, iso: o.iso ?? ex.iso ?? false, cat: o.cat ?? ex.cat ?? 'comp' };
   });
 }
 const specType = s => s.time ? 'time' : 'weight';
+
+/* ciclo */
+const daysBetween = (a, b) => Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5);
+const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function cycleWeekFor(iso) { const d = daysBetween(CFG.cycleStart, iso); return d < 0 ? 1 : Math.floor(d / 7) + 1; } // > CYCLE_WEEKS = ciclo encerrado
+const clampWeek = w => Math.min(Math.max(w, 1), CYCLE_WEEKS);
+const phaseOf = week => PHASES[clampWeek(week) - 1];
+const roundStep = w => Math.round(w / CFG.step) * CFG.step;
+
+/* aplica a semana do ciclo em cima da base do exercício */
+function applyPhase(spec, ph) {
+  const s = { ...spec, phase: ph, rest: ph.rest, lastLabel: ph.lastLabel || null, scheme: null };
+  const p = spec.iso ? ph.iso : ph.comp;
+  if (spec.time) {
+    const b = ph.timeBonus || 0;
+    s.time = [spec.time[0] + b, spec.time[1] + b];
+    if (spec.cat !== 'fixed') s.sets = p.sets;
+    return s;
+  }
+  if (spec.cat === 'fixed') return s;
+  s.sets = p.sets; s.reps = p.reps;
+  if (ph.scheme === 'topset' && !spec.iso) { s.scheme = 'topset'; s.backoff = ph.backoff; }
+  return s;
+}
+const rng = r => r[0] === r[1] ? `${r[0]}` : `${r[0]}–${r[1]}`;
 function targetTxt(s) {
+  if (s.scheme === 'topset') return `1 × ${rng(s.reps)} + ${s.sets - 1} × ${rng(s.backoff.reps)}`;
   const r = s.time || s.reps;
   if (!r) return `${s.sets} ×`;
-  const rng = r[0] === r[1] ? `${r[0]}` : `${r[0]}–${r[1]}`;
-  return `${s.sets} × ${rng}${s.time ? 's' : ''}`;
+  return `${s.sets} × ${rng(r)}${s.time ? 's' : ''}`;
 }
+const setReps = (s, j) => s.scheme === 'topset' && j > 0 ? s.backoff.reps : s.reps;
+const setLabel = (s, j) => s.time ? null : s.scheme === 'topset' ? (j === 0 ? 'TOP' : 'BO') : (s.lastLabel && j === s.sets - 1 ? s.lastLabel : null);
 
 /* histórico por exercício (mais recente primeiro) */
 function historyFor(key) {
@@ -317,39 +392,62 @@ const e1rm = (w, r) => r === 1 ? w : w * (1 + r / 30);
 const volume = sess => sess.exercises.reduce((t, e) => e.type === 'weight' ? t + e.sets.reduce((a, s) => a + s.w * s.r, 0) : t, 0);
 
 /* sugestão de progressão */
-function hintFor(spec, last) {
-  if (!last || last.type !== 'weight' || !spec.reps) return null;
-  const [lo, hi] = spec.reps;
-  const allTop = last.sets.length >= spec.sets && last.sets.every(s => s.r >= hi);
-  const anyLow = last.sets.some(s => s.r < lo);
-  const w = bestSet(last).w;
-  if (allTop) return { cls: 'up', w: w + CFG.step, txt: `Bateu o topo das reps na última. Tenta <b>${kg(w + CFG.step)} kg</b> hoje. <span class="faint">(toque pra aplicar)</span>` };
-  if (anyLow) return { cls: 'hold', txt: `Ficou abaixo de ${lo} reps na última. Segura <b>${kg(w)} kg</b> e fecha as reps.` };
+/* sugestão de carga pra semana atual */
+function loadHint(spec) {
+  if (spec.time || !spec.reps) return null;
+  const hist = historyFor(spec.name);
+  const last = hist[0];
+  if (!last || last.type !== 'weight') return null;
+  const ref = hist.find(h => !h.deload) || last;     // ignora semana de deload como referência
+  const b = bestSet(ref), rm = e1rm(b.w, b.r);
+  const [lo, hi] = spec.reps, ph = spec.phase;
+  if (ph.loadPct) {
+    const w = roundStep(b.w * ph.loadPct);
+    return { cls: 'info', auto: true, w, txt: `Deload: <b>${kg(w)} kg</b> (−${Math.round((1 - ph.loadPct) * 100)} % da última carga de trabalho, ${kg(b.w)} kg).` };
+  }
+  if (b.r > hi + 1 || b.r < lo - 1) {
+    const w = roundStep(rm / (1 + hi / 30));
+    const dir = b.r > hi + 1 ? 'menos reps, mais carga' : 'mais reps, menos carga';
+    return { cls: 'info', auto: true, w, txt: `Nova faixa ${lo}–${hi} reps (${dir}). Pelo 1RM estimado de ${kg(Math.round(rm))} kg, começa com <b>${kg(w)} kg</b>${spec.scheme === 'topset' ? ` no top set e ${kg(roundStep(w * spec.backoff.pct))} kg nos back-off` : ''}.` };
+  }
+  const allTop = ref.sets.length >= 2 && ref.sets.every(s => s.r >= hi);
+  const anyLow = ref.sets.some(s => s.r < lo);
+  if (allTop) return { cls: 'up', w: b.w + CFG.step, txt: `Bateu o topo das reps na última. Tenta <b>${kg(b.w + CFG.step)} kg</b> hoje. <span class="faint">(toque pra aplicar)</span>` };
+  if (anyLow) return { cls: 'hold', txt: `Ficou abaixo de ${lo} reps na última. Segura <b>${kg(b.w)} kg</b> e fecha as reps.` };
   return null;
 }
 
 /* ===== rascunho (treino em andamento) ===== */
-function newDraft(id) {
+function newDraft(id, week) {
   const w = workout(id);
-  const d = { workout: id, date: todayISO(), started: Date.now(), ex: [], fin: { score: '', loads: '', notes: '' }, notes: '' };
+  const date = todayISO();
+  week = clampWeek(week ?? cycleWeekFor(date));
+  const ph = phaseOf(week);
+  const d = { workout: id, date, week, started: Date.now(), ex: [], fin: { score: '', loads: '', notes: '' }, notes: '' };
   w.exercises.forEach((ex, i) => {
     const vs = variants(ex);
     // pega a variante usada mais recentemente
     let vi = 0, best = 0;
     vs.forEach((v, j) => { const l = lastFor(v.name); if (l && l.ts > best) { best = l.ts; vi = j; } });
-    d.ex.push(buildEntry(vs[vi]));
+    d.ex.push(buildEntry(applyPhase(vs[vi], ph)));
   });
   return d;
 }
 function buildEntry(spec) {
   const last = lastFor(spec.name);
+  const hint = loadHint(spec);
+  const auto = hint && hint.auto ? hint.w : null;
   const sets = [];
   for (let j = 0; j < spec.sets; j++) {
     const ls = last && last.sets[Math.min(j, last.sets.length - 1)];
-    sets.push(specType(spec) === 'time' ? { s: '', ps: ls ? ls.s : '' } : { w: ls ? ls.w : '', r: '', pw: ls ? ls.w : '', pr: ls ? ls.r : '' });
+    if (specType(spec) === 'time') { sets.push({ s: '', ps: ls ? ls.s : '' }); continue; }
+    let pw = auto != null ? auto : (ls ? ls.w : '');
+    if (spec.scheme === 'topset' && j > 0 && pw !== '') pw = roundStep(pw * spec.backoff.pct);
+    sets.push({ w: pw, r: '', pw, pr: auto != null ? '' : (ls ? ls.r : '') });
   }
   return { variant: spec.name, sets, done: sets.map(() => false) };
 }
+const phasedSpec = i => { const ex = workout(draft.workout).exercises[i]; const vs = variants(ex); return applyPhase(vs.find(x => x.name === draft.ex[i].variant) || vs[0], phaseOf(draft.week)); };
 const saveDraft = () => save(LS_DRAFT, draft);
 
 /* ===== render ===== */
@@ -371,34 +469,55 @@ function suggestedNext() {
   return { id: WORKOUTS[(i + 1) % WORKOUTS.length].id, last };
 }
 
+function planTable(cur) {
+  return `<table class="plan"><thead><tr><th>Sem</th><th>Fase</th><th>Compostos</th><th>Isolados</th><th class="r">Desc.</th></tr></thead><tbody>${PHASES.map(p =>
+    `<tr class="${p.week === cur ? 'cur' : ''}"><td class="num">${p.week}</td><td>${esc(p.name)}<div class="faint">${esc(p.technique.title)}</div></td><td class="num">${p.comp.sets} × ${rng(p.comp.reps)}</td><td class="num">${p.iso.sets} × ${rng(p.iso.reps)}</td><td class="r">${p.rest}s</td></tr>`).join('')}</tbody></table>`;
+}
+
 function renderTrain(v) {
   if (!draft) draft = newDraft(suggestedNext().id), saveDraft();
+  if (draft.week == null) { draft = newDraft(draft.workout); saveDraft(); }
   const w = workout(draft.workout);
-  header(w.name, w.subtitle + ' · ' + weekday(draft.date) + ' ' + fmtDate(draft.date),
+  const ph = phaseOf(draft.week);
+  const calWeek = cycleWeekFor(draft.date);
+  header(w.name, `${w.subtitle} · ${weekday(draft.date)} ${fmtDate(draft.date)}`,
     `<div class="seg">${WORKOUTS.map(x => `<button data-wk="${x.id}" class="${x.id === w.id ? 'on' : ''}">${x.id}</button>`).join('')}</div>`);
 
   const sug = suggestedNext();
   let html = '';
+  if (calWeek > CYCLE_WEEKS) html += `<div class="banner warn">🏁 <div><b>Ciclo encerrado</b> (${CYCLE_WEEKS} semanas desde ${fmtDate(CFG.cycleStart)}). Manda os treinos novos pro Claude e inicia um novo ciclo em Ajustes.</div></div>`;
   if (sug.last) html += `<div class="banner">🗓️ <div>Último: <b>${esc(workout(sug.last.workout).name)}</b> ${agoTxt(sug.last.date)}${sug.id !== w.id ? ` · sugerido hoje: <b>${esc(workout(sug.id).name)}</b>` : ''}</div></div>`;
+
+  // card do ciclo
+  html += `<div class="card cycle">
+    <div class="row"><div class="grow"><div class="k">Ciclo · semana</div>
+      <div class="big">Semana ${draft.week} <span class="muted">de ${CYCLE_WEEKS}</span> · ${esc(ph.name)}</div></div>
+      <select data-week aria-label="semana do ciclo">${PHASES.map(p => `<option value="${p.week}" ${p.week === draft.week ? 'selected' : ''}>S${p.week} · ${esc(p.name)}</option>`).join('')}</select></div>
+    <div class="weekbar">${PHASES.map(p => `<i class="${p.week < draft.week ? 'past' : p.week === draft.week ? 'cur' : ''}"></i>`).join('')}</div>
+    <div class="small muted" style="margin-top:8px">Compostos <b>${ph.comp.sets} × ${rng(ph.comp.reps)}</b> · isolados <b>${ph.iso.sets} × ${rng(ph.iso.reps)}</b> · descanso <b>${ph.rest}s</b> · ${esc(ph.rpe)}</div>
+    <div class="hint info">🎯 <div><b>${esc(ph.technique.title)}.</b> ${esc(ph.technique.desc)}</div></div>
+    <details class="plan-wrap"><summary>Ver plano das ${CYCLE_WEEKS} semanas</summary>${planTable(draft.week)}</details>
+  </div>`;
 
   html += `<div class="card warm"><div class="ico">🔥</div><div><div style="font-weight:650">Aquecimento</div><div class="small muted">${esc(w.warmup)}</div></div></div>`;
 
   w.exercises.forEach((ex, i) => {
     const vs = variants(ex);
     const d = draft.ex[i];
-    const spec = vs.find(x => x.name === d.variant) || vs[0];
+    const spec = phasedSpec(i);
     const type = specType(spec);
     const last = lastFor(spec.name);
-    const hint = hintFor(spec, last);
+    const hint = loadHint(spec);
     html += `<div class="card" data-exi="${i}">
-      <div class="ex-head"><div class="ex-title"><span class="ex-num">${i + 1}</span>${esc(spec.name)}${spec.each ? ` <span class="faint small">· ${esc(spec.each)}</span>` : ''}</div><div class="target">${targetTxt(spec)}</div></div>`;
+      <div class="ex-head"><div class="ex-title"><span class="ex-num">${i + 1}</span>${esc(spec.name)}${spec.each ? ` <span class="faint small">· ${esc(spec.each)}</span>` : ''}</div>
+      <div style="display:flex;gap:6px;flex:none"><div class="target">${targetTxt(spec)}</div><div class="target">⏱ ${spec.rest}s</div></div></div>`;
     if (vs.length > 1) html += `<div class="chips">${vs.map(x => `<button class="chip ${x.name === spec.name ? 'on' : ''}" data-variant="${i}" data-name="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>`;
     html += last
-      ? `<div class="last"><span>Última · ${fmtDate(last.date)} (${agoTxt(last.date)})</span><b>${esc(setsTxt(last))}</b></div>`
+      ? `<div class="last"><span>Última · ${fmtDate(last.date)} (${agoTxt(last.date)})${last.week ? ` · S${last.week}` : ''}</span><b>${esc(setsTxt(last))}</b></div>`
       : `<div class="last faint">Primeira vez · sem registro</div>`;
     if (hint) html += hint.cls === 'up'
       ? `<button class="hint up" data-apply="${i}" data-w="${hint.w}" style="width:100%;text-align:left">📈 <div>${hint.txt}</div></button>`
-      : `<div class="hint ${hint.cls}">⏸️ <div>${hint.txt}</div></div>`;
+      : `<div class="hint ${hint.cls}">${hint.cls === 'hold' ? '⏸️' : '🧮'} <div>${hint.txt}</div></div>`;
 
     html += `<div class="sets">`;
     html += type === 'time'
@@ -406,13 +525,16 @@ function renderTrain(v) {
       : `<div class="set-h"><span>#</span><span>kg</span><span>reps</span><span></span></div>`;
     d.sets.forEach((s, j) => {
       const done = d.done[j];
+      const lbl = setLabel(spec, j);
+      const n = lbl ? `<div class="n lbl">${lbl}</div>` : `<div class="n">${j + 1}</div>`;
+      const rp = s.pr !== '' && s.pr != null ? s.pr : (spec.reps ? rng(setReps(spec, j)) : '');
       html += type === 'time'
-        ? `<div class="set time ${done ? 'done' : ''}" data-row="${i},${j}"><div class="n">${j + 1}</div>
-             <input type="number" inputmode="numeric" placeholder="${esc(s.ps)}" value="${esc(s.s)}" data-f="s" data-exi="${i}" data-si="${j}">
+        ? `<div class="set time ${done ? 'done' : ''}" data-row="${i},${j}">${n}
+             <input type="number" inputmode="numeric" placeholder="${esc(s.ps !== '' && s.ps != null ? s.ps : rng(spec.time) + 's')}" value="${esc(s.s)}" data-f="s" data-exi="${i}" data-si="${j}">
              <button class="ok" data-done="${i},${j}" aria-label="marcar série">✓</button></div>`
-        : `<div class="set ${done ? 'done' : ''}" data-row="${i},${j}"><div class="n">${j + 1}</div>
+        : `<div class="set ${done ? 'done' : ''}" data-row="${i},${j}">${n}
              <input type="text" inputmode="decimal" placeholder="${esc(s.pw)}" value="${esc(s.w)}" data-f="w" data-exi="${i}" data-si="${j}">
-             <input type="number" inputmode="numeric" placeholder="${esc(s.pr)}" value="${esc(s.r)}" data-f="r" data-exi="${i}" data-si="${j}">
+             <input type="number" inputmode="numeric" placeholder="${esc(rp)}" value="${esc(s.r)}" data-f="r" data-exi="${i}" data-si="${j}">
              <button class="ok" data-done="${i},${j}" aria-label="marcar série">✓</button></div>`;
     });
     html += `</div><button class="addset" data-addset="${i}">+ série</button></div>`;
@@ -421,11 +543,12 @@ function renderTrain(v) {
   const f = w.finisher;
   if (f) {
     const lastF = lastFor('Finisher ' + w.id + ' · ' + f.name);
+    const fmt = f.weeks && f.weeks[draft.week - 1] ? f.weeks[draft.week - 1] : `${f.format}${f.cap ? ` · cap ${f.cap}` : ''}`;
     html += `<div class="card fin"><div class="badge">Finisher · cardio com peso</div>
-      <div class="ex-title">${esc(f.name)}</div><div class="fmt">${esc(f.format)}${f.cap ? ` · cap ${esc(f.cap)}` : ''}</div>
+      <div class="ex-title">${esc(f.name)}</div><div class="fmt"><b style="color:var(--text)">${esc(fmt)}</b> <span class="faint">· semana ${draft.week}</span></div>
       <ul class="mov">${f.movements.map(m => `<li>${esc(m)}</li>`).join('')}</ul>
       ${f.tip ? `<div class="hint info">💡 <div>${esc(f.tip)}</div></div>` : ''}
-      ${lastF ? `<div class="last"><span>Última · ${fmtDate(lastF.date)}</span><b>${esc(setsTxt(lastF))}</b>${lastF.notes ? `<span class="faint">“${esc(lastF.notes)}”</span>` : ''}</div>` : ''}
+      ${lastF ? `<div class="last"><span>Última · ${fmtDate(lastF.date)}${lastF.week ? ` · S${lastF.week}` : ''}</span><b>${esc(setsTxt(lastF))}</b>${lastF.notes ? `<span class="faint">“${esc(lastF.notes)}”</span>` : ''}</div>` : ''}
       <div class="fields">
         <div class="field"><label>${f.score === 'time' ? 'Tempo (mm:ss)' : 'Rounds + reps'}</label><input data-fin="score" placeholder="${f.score === 'time' ? '11:32' : '4 + 12'}" value="${esc(draft.fin.score)}"></div>
         <div class="field"><label>Cargas (${esc(f.loads || 'kg')})</label><input data-fin="loads" placeholder="KB 20 · 2×12" value="${esc(draft.fin.loads)}"></div>
@@ -435,7 +558,7 @@ function renderTrain(v) {
 
   html += `<div class="card"><div class="fields"><div class="field"><label>Data</label><input type="date" data-date value="${draft.date}"></div>
     <div class="field full"><label>Observações do treino</label><input data-notes placeholder="opcional" value="${esc(draft.notes)}"></div></div></div>`;
-  html += `<div class="note">${esc(w.rest)}. Quando bater o topo das reps com folga, aumenta a carga.</div>`;
+  html += `<div class="note">Descanso ${ph.rest}s entre séries nesta semana. Quando bater o topo das reps com folga, aumenta a carga.</div>`;
   html += `<div class="row"><button class="btn primary block" id="finish">Concluir treino ✓</button></div>
     <div class="row" style="margin-top:8px"><button class="btn block" id="discard" style="color:var(--muted)">Descartar rascunho</button></div>`;
   v.innerHTML = html;
@@ -451,7 +574,7 @@ function renderHistory(v) {
     if (m !== month) { month = m; const [y, mo] = m.split('-'); html += `<div class="section">${['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+mo - 1]} ${y}</div>`; }
     const vol = volume(s);
     html += `<details class="card sess"><summary><div class="row"><div class="tag ${s.workout}">${esc(s.workout)}</div>
-      <div><div style="font-weight:650">${weekday(s.date)} ${fmtDateFull(s.date)}</div><div class="meta">${(n => `${n} exercício${n === 1 ? '' : 's'}`)(s.exercises.filter(e => e.type !== 'wod').length)}${vol ? ` · ${kg(vol)} kg de volume` : ''}</div></div></div><span class="faint">›</span></summary>
+      <div><div style="font-weight:650">${weekday(s.date)} ${fmtDateFull(s.date)}</div><div class="meta">${s.week ? `<span class="wk">S${s.week}${s.phase ? ' ' + esc(s.phase) : ''}</span> · ` : ''}${(n => `${n} exercício${n === 1 ? '' : 's'}`)(s.exercises.filter(e => e.type !== 'wod').length)}${vol ? ` · ${kg(vol)} kg de volume` : ''}</div></div></div><span class="faint">›</span></summary>
       <div class="body">`;
     for (const e of s.exercises) html += `<div class="line"><span>${esc(e.key.replace(/^Finisher \w+ · /, '🔥 '))}</span><span class="sets-txt">${esc(setsTxt(e))}${e.notes ? `<br><span class="faint">${esc(e.notes)}</span>` : ''}</span></div>`;
     if (s.notes) html += `<div class="small muted">“${esc(s.notes)}”</div>`;
@@ -519,26 +642,33 @@ function chartSVG(pts) {
 
 function renderSettings(v) {
   header('Ajustes', 'Dados ficam só neste aparelho (localStorage)');
-  const n = DB.sessions.length;
+  const n = DB.sessions.length, cw = cycleWeekFor(todayISO());
   v.innerHTML = `
     <div class="section">Exportar</div>
     <div class="card" style="display:grid;gap:8px">
       <button class="btn block" id="csv">⬇️ Exportar CSV (todas as séries)</button>
       <button class="btn block" id="json">⬇️ Backup JSON</button>
-      <div class="small faint">${n} treino${n === 1 ? '' : 's'} · CSV com uma linha por série: data, treino, exercício, série, kg, reps, segundos, score, cargas, obs.</div>
+      <div class="small faint">${n} treino${n === 1 ? '' : 's'} · CSV com uma linha por série: data, treino, ciclo, semana, fase, exercício, série, kg, reps, segundos, score, cargas, obs.</div>
     </div>
     <div class="section">Importar</div>
     <div class="card" style="display:grid;gap:8px">
       <label class="btn block" style="cursor:pointer">⬆️ Restaurar backup JSON<input type="file" id="imp" accept=".json,application/json" hidden></label>
       <div class="small faint">Mescla com o que já existe (sem duplicar sessões).</div>
     </div>
+    <div class="section">Ciclo de ${CYCLE_WEEKS} semanas</div>
+    <div class="card">
+      <div class="fields"><div class="field"><label>Início do ciclo</label><input type="date" id="cfg-cycle" value="${esc(CFG.cycleStart)}"></div>
+        <div class="field"><label>Hoje</label><div style="height:44px;display:flex;align-items:center;font-weight:650">${cw > CYCLE_WEEKS ? '🏁 ciclo encerrado' : `Semana ${cw} · ${esc(phaseOf(cw).name)}`}</div></div></div>
+      <div class="small faint" style="margin:8px 0 10px">Termina em ${fmtDateFull(addDays(CFG.cycleStart, CYCLE_WEEKS * 7 - 1))}. Ao fim das ${CYCLE_WEEKS} semanas, manda os treinos novos pro Claude e inicia um novo ciclo aqui. O histórico de cargas continua valendo pros exercícios repetidos.</div>
+      <button class="btn block" id="cycle-new">🔄 Iniciar novo ciclo hoje</button>
+      <details class="plan-wrap" style="margin-top:10px"><summary>Plano das ${CYCLE_WEEKS} semanas</summary>${planTable(cw)}</details>
+    </div>
     <div class="section">Preferências</div>
     <div class="card"><div class="fields">
       <div class="field"><label>Incremento de carga (kg)</label><input type="text" inputmode="decimal" id="cfg-step" value="${esc(CFG.step)}"></div>
-      <div class="field"><label>Descanso padrão (s)</label><input type="number" inputmode="numeric" id="cfg-rest" value="${esc(CFG.rest)}"></div>
-    </div><div class="small faint" style="margin-top:8px">O incremento é usado na sugestão “tenta X kg”. O ✓ em cada série inicia o timer com o descanso padrão.</div></div>
+    </div><div class="small faint" style="margin-top:8px">Usado na sugestão “tenta X kg” e no arredondamento das cargas calculadas. O ✓ em cada série inicia o timer com o descanso da semana.</div></div>
     <div class="section">Treinos</div>
-    <div class="card small muted">Os treinos ficam no bloco <code>WORKOUTS</code> no início do arquivo <code>index.html</code>. Para alterar, edite lá ou peça pro Claude.</div>
+    <div class="card small muted">Os treinos ficam no bloco <code>WORKOUTS</code> e as fases do ciclo no bloco <code>PHASES</code>, no início do arquivo <code>index.html</code>. Para alterar, edite lá ou peça pro Claude.</div>
     <div class="section">Zona de perigo</div>
     <div class="card"><button class="btn block danger" id="wipe">Apagar todos os dados</button></div>`;
 }
@@ -547,22 +677,23 @@ function renderSettings(v) {
 function finishWorkout() {
   const w = workout(draft.workout);
   const exercises = [];
+  const ph = phaseOf(draft.week);
   w.exercises.forEach((ex, i) => {
     const d = draft.ex[i];
-    const spec = variants(ex).find(x => x.name === d.variant) || variants(ex)[0];
+    const spec = phasedSpec(i);
     const type = specType(spec);
     const sets = [];
     for (const s of d.sets) {
       if (type === 'time') { const sec = num(s.s); if (sec != null && sec > 0) sets.push({ s: sec }); }
       else { const wv = num(s.w), r = num(s.r); if (r != null && r > 0) sets.push({ w: wv ?? 0, r }); }
     }
-    if (sets.length) exercises.push({ key: spec.name, type, sets });
+    if (sets.length) exercises.push({ key: spec.name, type, sets, ...(ph.loadPct ? { deload: true } : {}) });
   });
   const f = w.finisher;
   if (f && (draft.fin.score || draft.fin.loads)) exercises.push({ key: 'Finisher ' + w.id + ' · ' + f.name, type: 'wod', sets: [], score: draft.fin.score.trim(), loads: draft.fin.loads.trim(), notes: draft.fin.notes.trim() });
   if (!exercises.length) { toast('Preencha pelo menos uma série', true); return; }
   if (!confirm(`Salvar ${w.name} de ${fmtDateFull(draft.date)} com ${exercises.length} registro(s)?`)) return;
-  DB.sessions.push({ id: uid(), date: draft.date, ts: new Date(draft.date + 'T12:00:00').getTime() + (Date.now() % 36e5), workout: w.id, exercises, notes: draft.notes.trim() });
+  DB.sessions.push({ id: uid(), date: draft.date, ts: new Date(draft.date + 'T12:00:00').getTime() + (Date.now() % 36e5), workout: w.id, week: draft.week, phase: ph.name, cycle: CFG.cycleStart, exercises, notes: draft.notes.trim() });
   save(LS_DB, DB);
   draft = null; localStorage.removeItem(LS_DRAFT);
   stopTimer();
@@ -571,11 +702,12 @@ function finishWorkout() {
 }
 
 function exportCSV() {
-  const rows = [['data', 'treino', 'exercicio', 'serie', 'kg', 'reps', 'segundos', 'score', 'cargas', 'obs_exercicio', 'obs_treino']];
+  const rows = [['data', 'treino', 'ciclo', 'semana', 'fase', 'exercicio', 'serie', 'kg', 'reps', 'segundos', 'score', 'cargas', 'obs_exercicio', 'obs_treino']];
   const q = v => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
   for (const s of DB.sessions.slice().sort((a, b) => a.ts - b.ts)) for (const e of s.exercises) {
-    if (e.type === 'wod') rows.push([s.date, s.workout, e.key, 1, '', '', '', e.score, e.loads, e.notes || '', s.notes || '']);
-    else e.sets.forEach((st, j) => rows.push([s.date, s.workout, e.key, j + 1, st.w ?? '', st.r ?? '', st.s ?? '', '', '', e.notes || '', s.notes || '']));
+    const head = [s.date, s.workout, s.cycle || '', s.week ?? '', s.phase || ''];
+    if (e.type === 'wod') rows.push([...head, e.key, 1, '', '', '', e.score, e.loads, e.notes || '', s.notes || '']);
+    else e.sets.forEach((st, j) => rows.push([...head, e.key, j + 1, st.w ?? '', st.r ?? '', st.s ?? '', '', '', e.notes || '', s.notes || '']));
   }
   download(`treinos_${todayISO()}.csv`, '﻿' + rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv;charset=utf-8');
 }
@@ -636,11 +768,17 @@ document.addEventListener('input', e => {
   if (t.hasAttribute('data-notes')) { draft.notes = t.value; saveDraft(); return; }
   if (t.hasAttribute('data-date')) { if (t.value) { draft.date = t.value; saveDraft(); header(workout(draft.workout).name, workout(draft.workout).subtitle + ' · ' + weekday(draft.date) + ' ' + fmtDate(draft.date), $('#h-right').innerHTML); } return; }
   if (t.id === 'cfg-step') { const n = num(t.value); if (n > 0) { CFG.step = n; save(LS_CFG, CFG); } return; }
-  if (t.id === 'cfg-rest') { const n = num(t.value); if (n > 0) { CFG.rest = n; save(LS_CFG, CFG); } return; }
+  if (t.id === 'cfg-cycle') { if (t.value) { CFG.cycleStart = t.value; save(LS_CFG, CFG); render(); } return; }
 });
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'pkey') { progressKey = t.value; render(); }
+  if (t.hasAttribute('data-week')) {
+    const wk = +t.value;
+    const hasData = draft.ex.some(x => x.sets.some(s => s.r || s.s)) || draft.fin.score;
+    if (hasData && !confirm('Trocar a semana recalcula as séries e descarta o que foi preenchido. Continuar?')) { t.value = draft.week; return; }
+    draft = newDraft(draft.workout, wk); saveDraft(); render();
+  }
   if (t.id === 'imp' && t.files[0]) { importJSON(t.files[0]); t.value = ''; }
 });
 document.addEventListener('click', e => {
@@ -655,7 +793,7 @@ document.addEventListener('click', e => {
   if (t.dataset.variant != null) {
     const i = +t.dataset.variant, ex = workout(draft.workout).exercises[i];
     const spec = variants(ex).find(x => x.name === t.dataset.name);
-    draft.ex[i] = buildEntry(spec); saveDraft(); render(); return;
+    draft.ex[i] = buildEntry(applyPhase(spec, phaseOf(draft.week))); saveDraft(); render(); return;
   }
   if (t.dataset.done) {
     const [i, j] = t.dataset.done.split(',').map(Number);
@@ -667,13 +805,13 @@ document.addEventListener('click', e => {
       if (s.r === '' && s.pr !== '' && s.pr != null) { s.r = String(s.pr); row.querySelector('[data-f="r"]').value = s.r; }
       if (s.w === '' && s.pw !== '' && s.pw != null) { s.w = String(s.pw); row.querySelector('[data-f="w"]').value = s.w; }
       if (s.s === '' && s.ps !== '' && s.ps != null) { s.s = String(s.ps); row.querySelector('[data-f="s"]').value = s.s; }
-      startTimer(CFG.rest);
+      startTimer(phaseOf(draft.week).rest);
     }
     saveDraft(); return;
   }
   if (t.dataset.apply != null) {
-    const d = draft.ex[+t.dataset.apply];
-    d.sets.forEach(s => { if ('w' in s) s.w = String(t.dataset.w); });
+    const i = +t.dataset.apply, d = draft.ex[i], spec = phasedSpec(i), top = +t.dataset.w;
+    d.sets.forEach((s, j) => { if ('w' in s) s.w = String(spec.scheme === 'topset' && j > 0 ? roundStep(top * spec.backoff.pct) : top); });
     saveDraft(); render(); toast(`${kg(+t.dataset.w)} kg aplicado nas séries`); return;
   }
   if (t.dataset.addset != null) {
@@ -685,6 +823,7 @@ document.addEventListener('click', e => {
   if (t.id === 'discard') { if (confirm('Descartar o rascunho deste treino?')) { draft = null; localStorage.removeItem(LS_DRAFT); render(); } return; }
   if (t.dataset.del) { if (confirm('Apagar este treino do histórico?')) { DB.sessions = DB.sessions.filter(s => s.id !== t.dataset.del); save(LS_DB, DB); render(); } return; }
   if (t.id === 'csv') { exportCSV(); return; }
+  if (t.id === 'cycle-new') { if (confirm(`Iniciar um novo ciclo de ${CYCLE_WEEKS} semanas a partir de hoje?`)) { CFG.cycleStart = todayISO(); save(LS_CFG, CFG); if (draft) { draft = newDraft(draft.workout, 1); saveDraft(); } toast('Novo ciclo iniciado'); render(); } return; }
   if (t.id === 'json') { exportJSON(); return; }
   if (t.id === 'wipe') { if (confirm('Apagar TODOS os treinos salvos? Isso não tem volta.') && confirm('Tem certeza? Faça um backup JSON antes.')) { DB = { version: 1, sessions: [] }; save(LS_DB, DB); draft = null; localStorage.removeItem(LS_DRAFT); toast('Dados apagados'); render(); } return; }
 });
