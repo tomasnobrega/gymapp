@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#0f1115">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Treino">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Treino</title>
 <style>
   :root{
@@ -843,6 +847,11 @@ document.addEventListener('pointerout', e => { if (e.target.closest('[data-pt]')
 document.addEventListener('pointerdown', e => { if (!e.target.closest('[data-pt]')) { const tip = $('#tip'); if (tip) tip.style.display = 'none'; } });
 
 render();
+
+/* offline / instalável (só funciona via http(s), ex.: GitHub Pages) */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
