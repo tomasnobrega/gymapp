@@ -50,6 +50,7 @@
   .ex-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   .ex-title{font-size:16px;font-weight:650}
   .ex-num{color:var(--faint);font-weight:600;margin-right:6px}
+  .pairtag{font-size:12px;color:var(--warn);font-weight:600;margin-top:4px}
   .target{font-size:13px;color:var(--muted);white-space:nowrap;background:var(--surface-2);border:1px solid var(--border);padding:3px 9px;border-radius:999px;flex:none}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
   .chip{padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-size:13px;font-weight:600}
@@ -84,13 +85,14 @@
   .weekbar i{flex:1;height:6px;border-radius:3px;background:var(--border)}
   .weekbar i.past{background:rgba(57,135,229,.45)}
   .weekbar i.cur{background:var(--accent)}
-  .plan-wrap{margin-top:10px}
+  .plan-wrap{margin-top:10px;overflow-x:auto}
   .plan-wrap summary{font-size:13px;color:var(--accent);font-weight:600;cursor:pointer;list-style:none;padding:4px 0}
   .plan-wrap summary::-webkit-details-marker{display:none}
   .plan-wrap summary::before{content:"▸ ";color:var(--faint)}
   .plan-wrap[open] summary::before{content:"▾ "}
   table.plan{margin-top:6px}
-  table.plan td,table.plan th{padding:7px 5px;font-size:12px}
+  table.plan td,table.plan th{padding:6px 4px;font-size:11.5px;white-space:nowrap}
+  table.plan td:nth-child(2){white-space:normal}
   table.plan tr.cur td{background:var(--accent-soft)}
   table.plan tr.cur td:first-child{border-radius:6px 0 0 6px} table.plan tr.cur td:last-child{border-radius:0 6px 6px 0}
   .banner.warn{background:var(--warn-soft);color:#f3cf7a}
@@ -227,79 +229,85 @@
    - time: [min, max]  -> exercício por tempo em segundos (prancha)
    - alt: variantes; cada uma vira um exercício separado no histórico
    - each: "cada perna" etc. (só rótulo)
-   - iso: true  -> isolado/acessório (faixa de reps mais alta no ciclo)
+   - role: 'main' (principal, sozinho, descanso cheio) | 'comp' (pares) | 'iso' (isolado)
+   - pair: 'Par 1' etc. -> exercícios com o mesmo pair são feitos alternados
+   - iso: true  -> isolado/acessório (equivale a role: 'iso')
    - cat: 'fixed' -> não muda com a semana do ciclo (mantém sets/reps)
-   - finisher: cardio com peso no fim; 'weeks' = formato em cada semana
+   - finisher: WOD no fim; 'weeks' = formato em cada semana
    ===================================================================== */
 const WORKOUTS = [
   {
-    id: 'A', name: 'Treino A', subtitle: 'Corpo inteiro',
-    warmup: '5 min bike ou remo leve + mobilidade',
-    rest: 'Descanso 60–90s entre séries',
+    id: 'A', name: 'Treino A', subtitle: 'Perna + banco com halteres',
+    warmup: '5 min bike ou remo leve + mobilidade de quadril e ombro',
+    rest: 'Principal sozinho; os pares são feitos alternados no banco',
     exercises: [
-      { name: 'Agachamento', alt: ['Agachamento', 'Leg press'], sets: 3, reps: [8, 10] },
-      { name: 'Supino reto', sets: 3, reps: [8, 10] },
-      { name: 'Remada', alt: ['Remada curvada', 'Remada máquina'], sets: 3, reps: [10, 10] },
-      { name: 'Desenvolvimento com halteres', sets: 3, reps: [10, 12] },
-      { name: 'Prancha', sets: 3, time: [30, 45] },
+      { name: 'Agachamento', alt: ['Agachamento', 'Leg press'], role: 'main' },
+      { name: 'Supino reto', each: 'com halteres', role: 'comp', pair: 'Par 1' },
+      { name: 'Remada serrote', each: 'cada braço, apoiado no banco', role: 'comp', pair: 'Par 1' },
+      { name: 'Desenvolvimento com halteres', role: 'comp', pair: 'Par 2' },
+      { name: 'Elevação lateral', role: 'iso', pair: 'Par 2' },
     ],
     finisher: {
-      name: 'Hyrox Mini', format: '3 rounds for time', cap: '12 min', score: 'time',
+      name: 'WOD A', format: 'Rounds for time', cap: '10 min', score: 'time',
       movements: [
         '250 m remo (ou 1 min bike forte)',
         '12 kettlebell swings',
-        '10 thrusters com halteres (ou wall balls)',
-        '40 m farmer carry (20 m ida e volta)',
+        '10 afundos com passada (5 cada perna)',
+        '40 m farmer carry',
+        '30 s prancha',
       ],
-      loads: 'KB · halteres · farmer',
-      tip: 'Ritmo constante, sem parar. Se sobrar gás no fim, sobe o KB na próxima.',
-      weeks: ['3 rounds · cap 12 min', '3 rounds · sobe o KB', '4 rounds · cap 15 min', '4 rounds · sobe os halteres', '5 rounds · cap 18 min', '2 rounds leves · sem relógio'],
+      loads: 'KB · farmer',
+      tip: 'Ritmo constante, sem parar. A prancha conta como o core do treino.',
+      weeks: ['2 rounds leves · sem relógio', '3 rounds · cap 10 min', '3 rounds · cap 12 min · sobe o KB', '3 rounds · cap 10 min · farmer mais pesado', '2 rounds fortes · cap 8 min', 'Sem finisher'],
     },
   },
   {
-    id: 'B', name: 'Treino B', subtitle: 'Corpo inteiro',
-    warmup: '5 min bike ou remo leve + mobilidade',
-    rest: 'Descanso 60–90s entre séries',
+    id: 'B', name: 'Treino B', subtitle: 'Posterior + máquinas e braço',
+    warmup: '5 min bike ou remo leve + mobilidade de quadril e ombro',
+    rest: 'Principal sozinho; leve os halteres até a puxada e a remada',
     exercises: [
-      { name: 'Stiff / terra romeno', sets: 3, reps: [8, 10] },
-      { name: 'Puxada alta (pulldown)', sets: 3, reps: [10, 10] },
-      { name: 'Afundo', alt: ['Afundo', 'Leg press unilateral'], sets: 3, reps: [10, 10], each: 'cada perna' },
-      { name: 'Elevação lateral', sets: 3, reps: [12, 15], iso: true },
-      { name: 'Rosca direta', sets: 2, reps: [12, 12], iso: true },
-      { name: 'Core', alt: [ { name: 'Abdominal', reps: [15, 20], cat: 'fixed' }, { name: 'Prancha lateral', time: [30, 45], each: 'cada lado' } ], sets: 3 },
+      { name: 'Stiff / terra romeno', role: 'main' },
+      { name: 'Puxada alta (pulldown)', role: 'comp', pair: 'Par 1' },
+      { name: 'Rosca com halteres', role: 'iso', pair: 'Par 1' },
+      { name: 'Remada máquina', role: 'comp', pair: 'Par 2' },
+      { name: 'Tríceps francês com halter', role: 'iso', pair: 'Par 2' },
     ],
     finisher: {
-      name: 'WOD', format: 'AMRAP 10 min', cap: '10 min', score: 'rounds',
+      name: 'WOD B', format: 'AMRAP', cap: '10 min', score: 'rounds',
       movements: [
         '10 cal bike (ou 200 m remo)',
-        '10 push press com halteres',
-        '10 kettlebell swings',
+        '8 push press com halteres',
+        '10 afundos com passada (5 cada perna)',
         '6 burpees',
+        '20 s hollow hold (ou 15 abdominais)',
       ],
-      loads: 'halteres · KB',
-      tip: 'Anote rounds + reps extras. Meta: bater o mesmo número de rounds com carga maior.',
-      weeks: ['AMRAP 10 min', 'AMRAP 10 min · meta: +1 round', 'AMRAP 12 min', 'AMRAP 12 min · sobe a carga', 'AMRAP 15 min', 'AMRAP 8 min leve · ritmo de conversa'],
+      loads: 'halteres',
+      tip: 'Anote rounds + reps extras. Meta: o mesmo número de rounds com carga maior.',
+      weeks: ['AMRAP 8 min leve', 'AMRAP 10 min', 'AMRAP 12 min', 'AMRAP 10 min · sobe a carga', 'AMRAP 8 min · forte', 'Sem finisher'],
     },
   },
 ];
 
 /* =====================================================================
    CICLO DE 6 SEMANAS — periodização aplicada em cima dos treinos acima
-   comp = compostos (padrão), iso = isolados, timeBonus = +s em prancha
+   main = principal, comp = pares, iso = isolados
+   rest = descanso em segundos por papel { main, comp, iso }
+   loadPct = semana leve (carga sugerida = % da última carga de trabalho)
+   noFinisher = semana sem finisher
    ===================================================================== */
 const PHASES = [
-  { week: 1, name: 'Base', comp: { sets: 3, reps: [10, 12] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: 60, rpe: 'RPE 7 · 3 reps na reserva',
-    technique: { title: 'Tempo controlado', desc: '3 s na descida, sobe forte. Carga moderada: a ideia é acumular volume com técnica limpa e deixar margem pra crescer.' } },
-  { week: 2, name: 'Base +', comp: { sets: 3, reps: [10, 12] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 5, rest: 75, rpe: 'RPE 8 · 2 reps na reserva',
-    technique: { title: 'Última série AMRAP', desc: 'Mesma carga da semana 1 (+1 degrau se bateu o topo). Na última série de cada exercício vai até 1 rep na reserva e anota quantas saíram.' }, lastLabel: 'AMRAP' },
-  { week: 3, name: 'Volume', comp: { sets: 4, reps: [8, 10] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 10, rest: 90, rpe: 'RPE 8',
-    technique: { title: 'Série extra + pausa', desc: '4 séries nos compostos e menos reps: sobe a carga. 1 s de pausa no ponto mais difícil (fundo do agacho, barra no peito).' } },
-  { week: 4, name: 'Força', comp: { sets: 4, reps: [6, 8] }, iso: { sets: 4, reps: [10, 12] }, timeBonus: 15, rest: 120, rpe: 'RPE 8–9',
-    technique: { title: 'Rest-pause na última', desc: 'Carga sobe de novo. Na última série chega perto da falha, descansa 15 s e faz mais 2–4 reps com a mesma carga.' }, lastLabel: 'RP' },
-  { week: 5, name: 'Pico', comp: { sets: 4, reps: [4, 6] }, iso: { sets: 4, reps: [8, 10] }, timeBonus: 15, rest: 180, rpe: 'RPE 9 · 1 rep na reserva',
-    technique: { title: 'Top set + back-off', desc: '1ª série pesada de 4–6 reps (top set). Depois 3 séries de back-off com −10 % da carga, 6–8 reps. Descanso longo, o objetivo é o recorde.' }, scheme: 'topset', backoff: { pct: 0.9, reps: [6, 8] } },
-  { week: 6, name: 'Deload', comp: { sets: 2, reps: [8, 10] }, iso: { sets: 2, reps: [12, 15] }, timeBonus: 0, rest: 90, rpe: 'RPE 6 · longe da falha',
-    technique: { title: 'Recuperação', desc: '−30 % de carga, metade do volume, técnica perfeita. Finisher leve. Fim do ciclo: manda os treinos novos pro próximo bloco.' }, loadPct: 0.7 },
+  { week: 1, name: 'Adaptação', main: { sets: 3, reps: [10, 10] }, comp: { sets: 3, reps: [10, 12] }, iso: { sets: 2, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 60, iso: 45 }, rpe: 'RPE 6–7 · 3–4 reps na reserva',
+    technique: { title: 'Aprender os exercícios', desc: 'Semana leve pra pegar o jeito dos exercícios novos e acertar a montagem dos pares no banco e nas máquinas. Carga ~85 % da última, longe da falha.' }, loadPct: 0.85 },
+  { week: 2, name: 'Volume', main: { sets: 4, reps: [8, 10] }, comp: { sets: 3, reps: [10, 12] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 7–8 · 2–3 reps na reserva',
+    technique: { title: 'Tempo controlado', desc: '3 s na descida, sobe forte. Nos pares, faz uma série de cada e descansa o tempo indicado entre um e outro.' } },
+  { week: 3, name: 'Volume +', main: { sets: 4, reps: [8, 10] }, comp: { sets: 4, reps: [8, 10] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 8 · 2 reps na reserva',
+    technique: { title: 'Última série AMRAP', desc: 'Sobe a carga onde bateu o topo das reps. Na última série de cada exercício vai até 1 rep na reserva e anota quantas saíram.' }, lastLabel: 'AMRAP' },
+  { week: 4, name: 'Força', main: { sets: 4, reps: [6, 8] }, comp: { sets: 4, reps: [8, 10] }, iso: { sets: 3, reps: [10, 12] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 8–9',
+    technique: { title: 'Pausa no principal', desc: 'Carga sobe. No exercício principal, 1 s de pausa no ponto mais difícil (fundo do agacho, barra abaixo do joelho no stiff).' } },
+  { week: 5, name: 'Força +', main: { sets: 4, reps: [5, 6] }, comp: { sets: 3, reps: [6, 8] }, iso: { sets: 3, reps: [10, 12] }, timeBonus: 0, rest: { main: 150, comp: 90, iso: 45 }, rpe: 'RPE 8–9 · 1–2 reps na reserva',
+    technique: { title: 'Rest-pause na última', desc: 'Na última série chega perto da falha, descansa 15 s e faz mais 2–3 reps com a mesma carga. Finisher curto e forte.' }, lastLabel: 'RP' },
+  { week: 6, name: 'Pico', main: { sets: 3, reps: [3, 5] }, comp: { sets: 3, reps: [6, 8] }, iso: { sets: 2, reps: [10, 12] }, timeBonus: 0, rest: { main: 150, comp: 90, iso: 45 }, rpe: 'RPE 9 · 1 rep na reserva',
+    technique: { title: 'Top set + back-off, sem finisher', desc: 'No principal, 1 série pesada de 3–5 reps (o recorde) e 2 de back-off com −10 %, 5–6 reps. Sem finisher: o foco da semana é só nos pesos. Fim do ciclo: o próximo começa pela Adaptação.' }, scheme: 'topset', backoff: { pct: 0.9, reps: [5, 6] }, noFinisher: true },
 ];
 const CYCLE_WEEKS = PHASES.length;
 
@@ -336,7 +344,7 @@ function variants(ex) {
   const list = ex.alt ? ex.alt : [ex.name];
   return list.map(v => {
     const o = typeof v === 'string' ? { name: v } : v;
-    return { name: o.name, sets: o.sets ?? ex.sets ?? 3, reps: o.reps ?? (o.time ? null : ex.reps), time: o.time ?? (o.reps ? null : ex.time), each: o.each ?? ex.each, iso: o.iso ?? ex.iso ?? false, cat: o.cat ?? ex.cat ?? 'comp' };
+    return { name: o.name, sets: o.sets ?? ex.sets ?? 3, reps: o.reps ?? (o.time ? null : ex.reps), time: o.time ?? (o.reps ? null : ex.time), each: o.each ?? ex.each, iso: o.iso ?? ex.iso ?? false, cat: o.cat ?? ex.cat ?? 'comp', role: o.role ?? ex.role ?? ((o.iso ?? ex.iso) ? 'iso' : 'comp'), pair: ex.pair ?? null };
   });
 }
 const specType = s => s.time ? 'time' : 'weight';
@@ -349,10 +357,15 @@ const clampWeek = w => Math.min(Math.max(w, 1), CYCLE_WEEKS);
 const phaseOf = week => PHASES[clampWeek(week) - 1];
 const roundStep = w => Math.round(w / CFG.step) * CFG.step;
 
+/* descanso por papel do exercício (main = principal, comp = pares, iso = isolados) */
+const restFor = (ph, role) => typeof ph.rest === 'number' ? ph.rest : (ph.rest[role] ?? ph.rest.comp);
+const restTxt = ph => typeof ph.rest === 'number' ? `${ph.rest}s` : `${ph.rest.main}/${ph.rest.comp}/${ph.rest.iso}s`;
+const schemeTxt = (ph, role) => { const p = ph[role]; if (!p) return '–'; return role === 'main' && ph.scheme === 'topset' ? `1 × ${rng(p.reps)} + ${p.sets - 1} × ${rng(ph.backoff.reps)}` : `${p.sets} × ${rng(p.reps)}`; };
+
 /* aplica a semana do ciclo em cima da base do exercício */
 function applyPhase(spec, ph) {
-  const s = { ...spec, phase: ph, rest: ph.rest, lastLabel: ph.lastLabel || null, scheme: null };
-  const p = spec.iso ? ph.iso : ph.comp;
+  const s = { ...spec, phase: ph, rest: restFor(ph, spec.role), lastLabel: ph.lastLabel || null, scheme: null };
+  const p = ph[spec.role] || (spec.iso ? ph.iso : ph.comp);
   if (spec.time) {
     const b = ph.timeBonus || 0;
     s.time = [spec.time[0] + b, spec.time[1] + b];
@@ -361,7 +374,7 @@ function applyPhase(spec, ph) {
   }
   if (spec.cat === 'fixed') return s;
   s.sets = p.sets; s.reps = p.reps;
-  if (ph.scheme === 'topset' && !spec.iso) { s.scheme = 'topset'; s.backoff = ph.backoff; }
+  if (ph.scheme === 'topset' && spec.role === 'main') { s.scheme = 'topset'; s.backoff = ph.backoff; }
   return s;
 }
 const rng = r => r[0] === r[1] ? `${r[0]}` : `${r[0]}–${r[1]}`;
@@ -407,7 +420,7 @@ function loadHint(spec) {
   const [lo, hi] = spec.reps, ph = spec.phase;
   if (ph.loadPct) {
     const w = roundStep(b.w * ph.loadPct);
-    return { cls: 'info', auto: true, w, txt: `Deload: <b>${kg(w)} kg</b> (−${Math.round((1 - ph.loadPct) * 100)} % da última carga de trabalho, ${kg(b.w)} kg).` };
+    return { cls: 'info', auto: true, w, txt: `${esc(ph.name)}: <b>${kg(w)} kg</b> (−${Math.round((1 - ph.loadPct) * 100)} % da última carga de trabalho, ${kg(b.w)} kg).` };
   }
   if (b.r > hi + 1 || b.r < lo - 1) {
     const w = roundStep(rm / (1 + hi / 30));
@@ -474,8 +487,8 @@ function suggestedNext() {
 }
 
 function planTable(cur) {
-  return `<table class="plan"><thead><tr><th>Sem</th><th>Fase</th><th>Compostos</th><th>Isolados</th><th class="r">Desc.</th></tr></thead><tbody>${PHASES.map(p =>
-    `<tr class="${p.week === cur ? 'cur' : ''}"><td class="num">${p.week}</td><td>${esc(p.name)}<div class="faint">${esc(p.technique.title)}</div></td><td class="num">${p.comp.sets} × ${rng(p.comp.reps)}</td><td class="num">${p.iso.sets} × ${rng(p.iso.reps)}</td><td class="r">${p.rest}s</td></tr>`).join('')}</tbody></table>`;
+  return `<table class="plan"><thead><tr><th>Sem</th><th>Fase</th><th>Principal</th><th>Pares</th><th>Isolados</th><th class="r">Desc.</th></tr></thead><tbody>${PHASES.map(p =>
+    `<tr class="${p.week === cur ? 'cur' : ''}"><td class="num">${p.week}</td><td>${esc(p.name)}<div class="faint">${esc(p.technique.title)}</div></td><td class="num">${schemeTxt(p, 'main')}</td><td class="num">${schemeTxt(p, 'comp')}</td><td class="num">${schemeTxt(p, 'iso')}</td><td class="r">${restTxt(p)}</td></tr>`).join('')}</tbody></table>${PHASES.some(p => typeof p.rest !== 'number') ? '<div class="small faint" style="margin-top:6px">Descanso: principal / pares / isolados.</div>' : ''}`;
 }
 
 function renderTrain(v) {
@@ -498,7 +511,7 @@ function renderTrain(v) {
       <div class="big">Semana ${draft.week} <span class="muted">de ${CYCLE_WEEKS}</span> · ${esc(ph.name)}</div></div>
       <select data-week aria-label="semana do ciclo">${PHASES.map(p => `<option value="${p.week}" ${p.week === draft.week ? 'selected' : ''}>S${p.week} · ${esc(p.name)}</option>`).join('')}</select></div>
     <div class="weekbar">${PHASES.map(p => `<i class="${p.week < draft.week ? 'past' : p.week === draft.week ? 'cur' : ''}"></i>`).join('')}</div>
-    <div class="small muted" style="margin-top:8px">Compostos <b>${ph.comp.sets} × ${rng(ph.comp.reps)}</b> · isolados <b>${ph.iso.sets} × ${rng(ph.iso.reps)}</b> · descanso <b>${ph.rest}s</b> · ${esc(ph.rpe)}</div>
+    <div class="small muted" style="margin-top:8px">${ph.main ? `Principal <b>${schemeTxt(ph, 'main')}</b> · ` : ''}pares <b>${schemeTxt(ph, 'comp')}</b> · isolados <b>${schemeTxt(ph, 'iso')}</b> · ${esc(ph.rpe)}${ph.noFinisher ? ' · <b>sem finisher</b>' : ''}</div>
     <div class="hint info">🎯 <div><b>${esc(ph.technique.title)}.</b> ${esc(ph.technique.desc)}</div></div>
     <details class="plan-wrap"><summary>Ver plano das ${CYCLE_WEEKS} semanas</summary>${planTable(draft.week)}</details>
   </div>`;
@@ -515,6 +528,8 @@ function renderTrain(v) {
     html += `<div class="card" data-exi="${i}">
       <div class="ex-head"><div class="ex-title"><span class="ex-num">${i + 1}</span>${esc(spec.name)}${spec.each ? ` <span class="faint small">· ${esc(spec.each)}</span>` : ''}</div>
       <div style="display:flex;gap:6px;flex:none"><div class="target">${targetTxt(spec)}</div><div class="target">⏱ ${spec.rest}s</div></div></div>`;
+    const mates = spec.pair ? w.exercises.filter((x, k) => k !== i && x.pair === spec.pair).map(x => x.name) : [];
+    if (spec.role === 'main' || mates.length) html += `<div class="pairtag">${spec.role === 'main' ? 'Principal · descanso cheio entre séries' : `${esc(spec.pair)} · alterna com ${esc(mates.join(' e '))}`}</div>`;
     if (vs.length > 1) html += `<div class="chips">${vs.map(x => `<button class="chip ${x.name === spec.name ? 'on' : ''}" data-variant="${i}" data-name="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>`;
     html += last
       ? `<div class="last"><span>Última · ${fmtDate(last.date)} (${agoTxt(last.date)})${last.week ? ` · S${last.week}` : ''}</span><b>${esc(setsTxt(last))}</b></div>`
@@ -544,7 +559,8 @@ function renderTrain(v) {
     html += `</div><button class="addset" data-addset="${i}">+ série</button></div>`;
   });
 
-  const f = w.finisher;
+  const f = ph.noFinisher ? null : w.finisher;
+  if (ph.noFinisher && w.finisher) html += `<div class="note">Sem finisher nesta semana: foco total nos pesos.</div>`;
   if (f) {
     const lastF = lastFor('Finisher ' + w.id + ' · ' + f.name);
     const fmt = f.weeks && f.weeks[draft.week - 1] ? f.weeks[draft.week - 1] : `${f.format}${f.cap ? ` · cap ${f.cap}` : ''}`;
@@ -562,7 +578,7 @@ function renderTrain(v) {
 
   html += `<div class="card"><div class="fields"><div class="field"><label>Data</label><input type="date" data-date value="${draft.date}"></div>
     <div class="field full"><label>Observações do treino</label><input data-notes placeholder="opcional" value="${esc(draft.notes)}"></div></div></div>`;
-  html += `<div class="note">Descanso ${ph.rest}s entre séries nesta semana. Quando bater o topo das reps com folga, aumenta a carga.</div>`;
+  html += `<div class="note">Descanso nesta semana: ${typeof ph.rest === 'number' ? `${ph.rest}s entre séries` : `principal ${ph.rest.main}s · pares ${ph.rest.comp}s entre os exercícios · isolados ${ph.rest.iso}s`}. Quando bater o topo das reps com folga, aumenta a carga.</div>`;
   html += `<div class="row"><button class="btn primary block" id="finish">Concluir treino ✓</button></div>
     <div class="row" style="margin-top:8px"><button class="btn block" id="discard" style="color:var(--muted)">Descartar rascunho</button></div>`;
   v.innerHTML = html;
@@ -670,7 +686,7 @@ function renderSettings(v) {
     <div class="section">Preferências</div>
     <div class="card"><div class="fields">
       <div class="field"><label>Incremento de carga (kg)</label><input type="text" inputmode="decimal" id="cfg-step" value="${esc(CFG.step)}"></div>
-    </div><div class="small faint" style="margin-top:8px">Usado na sugestão “tenta X kg” e no arredondamento das cargas calculadas. O ✓ em cada série inicia o timer com o descanso da semana.</div></div>
+    </div><div class="small faint" style="margin-top:8px">Usado na sugestão “tenta X kg” e no arredondamento das cargas calculadas. O ✓ em cada série inicia o timer com o descanso do exercício nesta semana.</div></div>
     <div class="section">Treinos</div>
     <div class="card small muted">Os treinos ficam no bloco <code>WORKOUTS</code> e as fases do ciclo no bloco <code>PHASES</code>, no início do arquivo <code>index.html</code>. Para alterar, edite lá ou peça pro Claude.</div>
     <div class="section">Zona de perigo</div>
@@ -693,7 +709,7 @@ function finishWorkout() {
     }
     if (sets.length) exercises.push({ key: spec.name, type, sets, ...(ph.loadPct ? { deload: true } : {}) });
   });
-  const f = w.finisher;
+  const f = ph.noFinisher ? null : w.finisher;
   if (f && (draft.fin.score || draft.fin.loads)) exercises.push({ key: 'Finisher ' + w.id + ' · ' + f.name, type: 'wod', sets: [], score: draft.fin.score.trim(), loads: draft.fin.loads.trim(), notes: draft.fin.notes.trim() });
   if (!exercises.length) { toast('Preencha pelo menos uma série', true); return; }
   if (!confirm(`Salvar ${w.name} de ${fmtDateFull(draft.date)} com ${exercises.length} registro(s)?`)) return;
@@ -809,7 +825,7 @@ document.addEventListener('click', e => {
       if (s.r === '' && s.pr !== '' && s.pr != null) { s.r = String(s.pr); row.querySelector('[data-f="r"]').value = s.r; }
       if (s.w === '' && s.pw !== '' && s.pw != null) { s.w = String(s.pw); row.querySelector('[data-f="w"]').value = s.w; }
       if (s.s === '' && s.ps !== '' && s.ps != null) { s.s = String(s.ps); row.querySelector('[data-f="s"]').value = s.s; }
-      startTimer(phaseOf(draft.week).rest);
+      startTimer(phasedSpec(i).rest);
     }
     saveDraft(); return;
   }

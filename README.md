@@ -4,11 +4,11 @@ App de treino em um único arquivo (`index.html`), sem dependências, feito pra 
 
 ## O que faz
 
-- **Treinos A e B** (corpo inteiro) com aquecimento, séries × reps e um **finisher de cardio com peso** no fim (estilo Hyrox / WOD).
+- **Treinos A e B** (corpo inteiro) com aquecimento, um exercício principal, dois pares alternados e um **finisher** (WOD com core) no fim.
 - **Ciclo de 6 semanas** com periodização embutida: a cada semana o app muda séries, faixa de reps, descanso e técnica pra manter o estímulo crescente. No fim do ciclo, você manda treinos novos e inicia outro ciclo.
 - **Registro de cargas**: em cada exercício aparece o que você fez da última vez (kg × reps por série) e os campos já vêm preenchidos com a carga anterior.
-- **Sugestão de carga**: quando a faixa de reps muda de uma semana pra outra, o app calcula a carga inicial pelo 1RM estimado da última sessão e já preenche. Na mesma faixa, se bateu o topo das reps em todas as séries, sugere subir a carga (toque pra aplicar). No deload, sugere −30 %.
-- **Timer de descanso**: o ✓ de cada série marca como feita e dispara o timer (padrão 90s, com aviso sonoro e vibração).
+- **Sugestão de carga**: quando a faixa de reps muda de uma semana pra outra, o app calcula a carga inicial pelo 1RM estimado da última sessão e já preenche. Na mesma faixa, se bateu o topo das reps em todas as séries, sugere subir a carga (toque pra aplicar). Na semana de Adaptação, sugere −15 %.
+- **Timer de descanso**: o ✓ de cada série marca como feita e dispara o timer com o descanso do exercício naquela semana (principal, par ou isolado), com aviso sonoro e vibração.
 - **Histórico** por sessão, com volume total e detalhe das séries.
 - **Progresso** por exercício: melhor carga, 1RM estimado (Epley) e gráfico da evolução.
 - **Exportar CSV** (uma linha por série) e **backup/restauração em JSON**.
@@ -16,16 +16,18 @@ App de treino em um único arquivo (`index.html`), sem dependências, feito pra 
 
 ## O ciclo de 6 semanas
 
-| Sem | Fase | Compostos | Isolados | Descanso | Técnica |
-|----:|------|-----------|----------|---------:|---------|
-| 1 | Base | 3 × 10–12 | 3 × 12–15 | 60s | Tempo controlado (3 s na descida) |
-| 2 | Base + | 3 × 10–12 | 3 × 12–15 | 75s | Última série AMRAP |
-| 3 | Volume | 4 × 8–10 | 3 × 12–15 | 90s | Série extra + pausa de 1 s |
-| 4 | Força | 4 × 6–8 | 4 × 10–12 | 120s | Rest-pause na última série |
-| 5 | Pico | 1 × 4–6 + 3 × 6–8 | 4 × 8–10 | 180s | Top set + back-off (−10 %) |
-| 6 | Deload | 2 × 8–10 | 2 × 12–15 | 90s | −30 % de carga, longe da falha |
+Cada treino tem um **exercício principal** (feito sozinho, com descanso cheio) e dois **pares** (dois exercícios alternados no mesmo lugar da academia). O core fica dentro do finisher.
 
-Prancha e afins ganham +5 a +15 s de alvo ao longo do ciclo. O finisher também progride por semana (mais rounds/tempo, depois mais carga; leve no deload).
+| Sem | Fase | Principal | Pares | Isolados | Descanso (princ./pares/iso) | Técnica |
+|----:|------|-----------|-------|----------|-------------:|---------|
+| 1 | Adaptação | 3 × 10 | 3 × 10–12 | 2 × 12–15 | 120/60/45s | ~85 % da carga, aprender os exercícios |
+| 2 | Volume | 4 × 8–10 | 3 × 10–12 | 3 × 12–15 | 120/75/45s | Tempo controlado (3 s na descida) |
+| 3 | Volume + | 4 × 8–10 | 4 × 8–10 | 3 × 12–15 | 120/75/45s | Última série AMRAP |
+| 4 | Força | 4 × 6–8 | 4 × 8–10 | 3 × 10–12 | 120/75/45s | Pausa de 1 s no principal |
+| 5 | Força + | 4 × 5–6 | 3 × 6–8 | 3 × 10–12 | 150/90/45s | Rest-pause na última |
+| 6 | Pico | 1 × 3–5 + 2 × 5–6 (−10 %) | 3 × 6–8 | 2 × 10–12 | 150/90/45s | Top set + back-off, **sem finisher** |
+
+O finisher (WOD) progride por semana e some na semana 6. O próximo ciclo começa pela Adaptação, que faz o papel do deload.
 
 A semana é calculada pela data de início do ciclo (Ajustes → Ciclo). Dá pra trocar a semana manualmente no card do ciclo, por exemplo se pulou uma semana. As fases ficam no bloco `PHASES` do `index.html`.
 
@@ -59,6 +61,8 @@ Os treinos estão no bloco `WORKOUTS`, no início do `<script>` em `index.html`.
 | `time` | `[30, 45]`            | exercício por tempo, em segundos (prancha)          |
 | `alt`  | `['Agachamento', 'Leg press']` | variantes; cada uma tem histórico próprio  |
 | `each` | `'cada perna'`        | só rótulo                                           |
+| `role` | `'main'`              | `'main'` principal, `'comp'` par, `'iso'` isolado   |
+| `pair` | `'Par 1'`             | exercícios com o mesmo `pair` são feitos alternados |
 | `iso`  | `true`                | isolado: usa a faixa de reps mais alta do ciclo     |
 | `cat`  | `'fixed'`             | não muda com a semana (mantém sets/reps)            |
 
