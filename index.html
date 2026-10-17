@@ -51,6 +51,14 @@
   .ex-title{font-size:16px;font-weight:650}
   .ex-num{color:var(--faint);font-weight:600;margin-right:6px}
   .pairtag{font-size:12px;color:var(--warn);font-weight:600;margin-top:4px}
+  .card.pair{border-color:rgba(237,161,0,.35)}
+  .card.pair > .pairtag{margin:0 0 10px}
+  .pex{padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--border)}
+  .set-h.pr,.set.pr{grid-template-columns:66px 1fr 1fr 44px}
+  .set .n.nm{font-size:11px;line-height:1.15;text-align:left;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+  .set .n.nm b{display:block;font-size:13px;color:var(--faint)}
+  .set.rs{margin-top:8px}
+  .addrow{display:flex;gap:6px;flex-wrap:wrap}
   .target{font-size:13px;color:var(--muted);white-space:nowrap;background:var(--surface-2);border:1px solid var(--border);padding:3px 9px;border-radius:999px;flex:none}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
   .chip{padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-size:13px;font-weight:600}
@@ -230,7 +238,8 @@
    - alt: variantes; cada uma vira um exercício separado no histórico
    - each: "cada perna" etc. (só rótulo)
    - role: 'main' (principal, sozinho, descanso cheio) | 'comp' (pares) | 'iso' (isolado)
-   - pair: 'Par 1' etc. -> exercícios com o mesmo pair são feitos alternados
+   - pair: 'Par 1' etc. -> exercícios com o mesmo pair ficam num card só, com as séries intercaladas
+   - short: nome curto mostrado nas séries do par (padrão: 1ª palavra do nome)
    - iso: true  -> isolado/acessório (equivale a role: 'iso')
    - cat: 'fixed' -> não muda com a semana do ciclo (mantém sets/reps)
    - finisher: WOD no fim; 'weeks' = formato em cada semana
@@ -243,8 +252,8 @@ const WORKOUTS = [
     exercises: [
       { name: 'Agachamento', alt: ['Agachamento', 'Leg press'], role: 'main' },
       { name: 'Supino reto', each: 'com halteres', role: 'comp', pair: 'Par 1' },
-      { name: 'Remada serrote', each: 'cada braço, apoiado no banco', role: 'comp', pair: 'Par 1' },
-      { name: 'Desenvolvimento com halteres', role: 'comp', pair: 'Par 2' },
+      { name: 'Remada serrote', short: 'Serrote', each: 'cada braço, apoiado no banco', role: 'comp', pair: 'Par 1' },
+      { name: 'Desenvolvimento com halteres', short: 'Desenv.', role: 'comp', pair: 'Par 2' },
       { name: 'Elevação lateral', role: 'iso', pair: 'Par 2' },
     ],
     finisher: {
@@ -356,6 +365,9 @@ function cycleWeekFor(iso) { const d = daysBetween(CFG.cycleStart, iso); return 
 const clampWeek = w => Math.min(Math.max(w, 1), CYCLE_WEEKS);
 const phaseOf = week => PHASES[clampWeek(week) - 1];
 const roundStep = w => Math.round(w / CFG.step) * CFG.step;
+
+const PAIR_SWAP = 20; // segundos pra trocar de exercício dentro de um par
+const shortName = (ex, name) => ex.short || name.split(/[\s/(]/)[0];
 
 /* descanso por papel do exercício (main = principal, comp = pares, iso = isolados) */
 const restFor = (ph, role) => typeof ph.rest === 'number' ? ph.rest : (ph.rest[role] ?? ph.rest.comp);
@@ -518,45 +530,61 @@ function renderTrain(v) {
 
   html += `<div class="card warm"><div class="ico">🔥</div><div><div style="font-weight:650">Aquecimento</div><div class="small muted">${esc(w.warmup)}</div></div></div>`;
 
-  w.exercises.forEach((ex, i) => {
-    const vs = variants(ex);
-    const d = draft.ex[i];
-    const spec = phasedSpec(i);
-    const type = specType(spec);
-    const last = lastFor(spec.name);
-    const hint = loadHint(spec);
-    html += `<div class="card" data-exi="${i}">
-      <div class="ex-head"><div class="ex-title"><span class="ex-num">${i + 1}</span>${esc(spec.name)}${spec.each ? ` <span class="faint small">· ${esc(spec.each)}</span>` : ''}</div>
-      <div style="display:flex;gap:6px;flex:none"><div class="target">${targetTxt(spec)}</div><div class="target">⏱ ${spec.rest}s</div></div></div>`;
-    const mates = spec.pair ? w.exercises.filter((x, k) => k !== i && x.pair === spec.pair).map(x => x.name) : [];
-    if (spec.role === 'main' || mates.length) html += `<div class="pairtag">${spec.role === 'main' ? 'Principal · descanso cheio entre séries' : `${esc(spec.pair)} · alterna com ${esc(mates.join(' e '))}`}</div>`;
-    if (vs.length > 1) html += `<div class="chips">${vs.map(x => `<button class="chip ${x.name === spec.name ? 'on' : ''}" data-variant="${i}" data-name="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>`;
-    html += last
+  // cabeçalho de um exercício (nome, alvo, variantes, última vez, sugestão de carga)
+  const exHead = (i, rest) => {
+    const vs = variants(w.exercises[i]), spec = phasedSpec(i), last = lastFor(spec.name), hint = loadHint(spec);
+    let h = `<div class="ex-head"><div class="ex-title"><span class="ex-num">${i + 1}</span>${esc(spec.name)}${spec.each ? ` <span class="faint small">· ${esc(spec.each)}</span>` : ''}</div>
+      <div style="display:flex;gap:6px;flex:none"><div class="target">${targetTxt(spec)}</div>${rest ? `<div class="target">⏱ ${spec.rest}s</div>` : ''}</div></div>`;
+    if (spec.role === 'main') h += `<div class="pairtag">Principal · descanso cheio entre séries</div>`;
+    if (vs.length > 1) h += `<div class="chips">${vs.map(x => `<button class="chip ${x.name === spec.name ? 'on' : ''}" data-variant="${i}" data-name="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>`;
+    h += last
       ? `<div class="last"><span>Última · ${fmtDate(last.date)} (${agoTxt(last.date)})${last.week ? ` · S${last.week}` : ''}</span><b>${esc(setsTxt(last))}</b></div>`
       : `<div class="last faint">Primeira vez · sem registro</div>`;
-    if (hint) html += hint.cls === 'up'
+    if (hint) h += hint.cls === 'up'
       ? `<button class="hint up" data-apply="${i}" data-w="${hint.w}" style="width:100%;text-align:left">📈 <div>${hint.txt}</div></button>`
       : `<div class="hint ${hint.cls}">${hint.cls === 'hold' ? '⏸️' : '🧮'} <div>${hint.txt}</div></div>`;
+    return h;
+  };
+  // uma linha de série; dentro de um par, a coluna # mostra o nome curto do exercício
+  const setRow = (i, j, short, cls = '') => {
+    const spec = phasedSpec(i), s = draft.ex[i].sets[j], done = draft.ex[i].done[j], lbl = setLabel(spec, j);
+    const n = short ? `<div class="n nm">${esc(short)}<b>${lbl || j + 1}</b></div>` : lbl ? `<div class="n lbl">${lbl}</div>` : `<div class="n">${j + 1}</div>`;
+    const rp = s.pr !== '' && s.pr != null ? s.pr : (spec.reps ? rng(setReps(spec, j)) : '');
+    const c = `set ${short ? 'pr' : ''} ${cls} ${done ? 'done' : ''}`;
+    return specType(spec) === 'time'
+      ? `<div class="${c} time" data-row="${i},${j}">${n}
+           <input type="number" inputmode="numeric" placeholder="${esc(s.ps !== '' && s.ps != null ? s.ps : rng(spec.time) + 's')}" value="${esc(s.s)}" data-f="s" data-exi="${i}" data-si="${j}">
+           <button class="ok" data-done="${i},${j}" aria-label="marcar série">✓</button></div>`
+      : `<div class="${c}" data-row="${i},${j}">${n}
+           <input type="text" inputmode="decimal" placeholder="${esc(s.pw)}" value="${esc(s.w)}" data-f="w" data-exi="${i}" data-si="${j}">
+           <input type="number" inputmode="numeric" placeholder="${esc(rp)}" value="${esc(s.r)}" data-f="r" data-exi="${i}" data-si="${j}">
+           <button class="ok" data-done="${i},${j}" aria-label="marcar série">✓</button></div>`;
+  };
+  const setHead = (i, wide) => specType(phasedSpec(i)) === 'time'
+    ? `<div class="set-h time ${wide ? 'pr' : ''}"><span>#</span><span>segundos</span><span></span></div>`
+    : `<div class="set-h ${wide ? 'pr' : ''}"><span>#</span><span>kg</span><span>reps</span><span></span></div>`;
 
-    html += `<div class="sets">`;
-    html += type === 'time'
-      ? `<div class="set-h time"><span>#</span><span>segundos</span><span></span></div>`
-      : `<div class="set-h"><span>#</span><span>kg</span><span>reps</span><span></span></div>`;
-    d.sets.forEach((s, j) => {
-      const done = d.done[j];
-      const lbl = setLabel(spec, j);
-      const n = lbl ? `<div class="n lbl">${lbl}</div>` : `<div class="n">${j + 1}</div>`;
-      const rp = s.pr !== '' && s.pr != null ? s.pr : (spec.reps ? rng(setReps(spec, j)) : '');
-      html += type === 'time'
-        ? `<div class="set time ${done ? 'done' : ''}" data-row="${i},${j}">${n}
-             <input type="number" inputmode="numeric" placeholder="${esc(s.ps !== '' && s.ps != null ? s.ps : rng(spec.time) + 's')}" value="${esc(s.s)}" data-f="s" data-exi="${i}" data-si="${j}">
-             <button class="ok" data-done="${i},${j}" aria-label="marcar série">✓</button></div>`
-        : `<div class="set ${done ? 'done' : ''}" data-row="${i},${j}">${n}
-             <input type="text" inputmode="decimal" placeholder="${esc(s.pw)}" value="${esc(s.w)}" data-f="w" data-exi="${i}" data-si="${j}">
-             <input type="number" inputmode="numeric" placeholder="${esc(rp)}" value="${esc(s.r)}" data-f="r" data-exi="${i}" data-si="${j}">
-             <button class="ok" data-done="${i},${j}" aria-label="marcar série">✓</button></div>`;
+  const seen = new Set();
+  w.exercises.forEach((ex, i) => {
+    if (seen.has(i)) return;
+    const group = ex.pair ? w.exercises.map((x, k) => k).filter(k => w.exercises[k].pair === ex.pair) : [i];
+    group.forEach(k => seen.add(k));
+    if (group.length === 1) {
+      html += `<div class="card" data-exi="${i}">${exHead(i, true)}<div class="sets">${setHead(i)}${draft.ex[i].sets.map((s, j) => setRow(i, j)).join('')}</div>
+        <button class="addset" data-addset="${i}">+ série</button></div>`;
+      return;
+    }
+    // par: um card só, com as séries intercaladas (1ª de um, 1ª do outro, 2ª de um...)
+    const rest = Math.max(...group.map(k => phasedSpec(k).rest));
+    const shorts = group.map(k => shortName(w.exercises[k], phasedSpec(k).name));
+    html += `<div class="card pair"><div class="pairtag">${esc(ex.pair)} · faz um, troca pro outro (${PAIR_SWAP}s) e descansa ${rest}s depois da rodada</div>`;
+    group.forEach(k => { html += `<div class="pex">${exHead(k, false)}</div>`; });
+    html += `<div class="sets">${setHead(group[0], true)}`;
+    const rounds = Math.max(...group.map(k => draft.ex[k].sets.length));
+    for (let j = 0; j < rounds; j++) group.forEach((k, g) => {
+      if (j < draft.ex[k].sets.length) html += setRow(k, j, shorts[g], g === 0 && j > 0 ? 'rs' : '');
     });
-    html += `</div><button class="addset" data-addset="${i}">+ série</button></div>`;
+    html += `</div><div class="addrow">${group.map((k, g) => `<button class="addset" data-addset="${k}">+ série ${esc(shorts[g])}</button>`).join('')}</div></div>`;
   });
 
   const f = ph.noFinisher ? null : w.finisher;
@@ -578,7 +606,7 @@ function renderTrain(v) {
 
   html += `<div class="card"><div class="fields"><div class="field"><label>Data</label><input type="date" data-date value="${draft.date}"></div>
     <div class="field full"><label>Observações do treino</label><input data-notes placeholder="opcional" value="${esc(draft.notes)}"></div></div></div>`;
-  html += `<div class="note">Descanso nesta semana: ${typeof ph.rest === 'number' ? `${ph.rest}s entre séries` : `principal ${ph.rest.main}s · pares ${ph.rest.comp}s entre os exercícios · isolados ${ph.rest.iso}s`}. Quando bater o topo das reps com folga, aumenta a carga.</div>`;
+  html += `<div class="note">Descanso nesta semana: ${typeof ph.rest === 'number' ? `${ph.rest}s entre séries` : `principal ${ph.rest.main}s · pares ${ph.rest.comp}s depois de cada rodada · isolados ${ph.rest.iso}s`}. Quando bater o topo das reps com folga, aumenta a carga.</div>`;
   html += `<div class="row"><button class="btn primary block" id="finish">Concluir treino ✓</button></div>
     <div class="row" style="margin-top:8px"><button class="btn block" id="discard" style="color:var(--muted)">Descartar rascunho</button></div>`;
   v.innerHTML = html;
@@ -751,9 +779,9 @@ function importJSON(file) {
 }
 
 /* ===== timer ===== */
-let tEnd = 0, tTotal = 0, tInt = null, audio = null;
-function startTimer(sec) {
-  tTotal = sec; tEnd = Date.now() + sec * 1000;
+let tEnd = 0, tTotal = 0, tInt = null, audio = null; let tLabel = 'Descanso';
+function startTimer(sec, label = 'Descanso') {
+  tLabel = label; tTotal = sec; tEnd = Date.now() + sec * 1000;
   $('#timer').classList.add('on'); $('#timer').classList.remove('end');
   clearInterval(tInt); tick(); tInt = setInterval(tick, 250);
   try { if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
@@ -764,7 +792,7 @@ function tick() {
   $('#t-left').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   $('#t-bar').style.width = (left / (tTotal * 1000) * 100) + '%';
   if (left <= 0) { clearInterval(tInt); $('#timer').classList.add('end'); $('#t-label').textContent = 'Bora! Próxima série'; beep(); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} setTimeout(stopTimer, 6000); }
-  else $('#t-label').textContent = 'Descanso';
+  else $('#t-label').textContent = tLabel;
 }
 function stopTimer() { clearInterval(tInt); $('#timer').classList.remove('on', 'end'); }
 function beep() {
@@ -825,7 +853,16 @@ document.addEventListener('click', e => {
       if (s.r === '' && s.pr !== '' && s.pr != null) { s.r = String(s.pr); row.querySelector('[data-f="r"]').value = s.r; }
       if (s.w === '' && s.pw !== '' && s.pw != null) { s.w = String(s.pw); row.querySelector('[data-f="w"]').value = s.w; }
       if (s.s === '' && s.ps !== '' && s.ps != null) { s.s = String(s.ps); row.querySelector('[data-f="s"]').value = s.s; }
-      startTimer(phasedSpec(i).rest);
+      // em par: troca rápida pro outro exercício; depois do último da rodada, descanso cheio
+      const exs = workout(draft.workout).exercises, ex = exs[i];
+      let sec = phasedSpec(i).rest, lbl = 'Descanso';
+      if (ex.pair) {
+        const mates = exs.map((x, k) => k).filter(k => k !== i && exs[k].pair === ex.pair);
+        const next = mates.find(k => j < draft.ex[k].sets.length && !draft.ex[k].done[j]);
+        if (next != null) { sec = PAIR_SWAP; lbl = `Troca: ${shortName(exs[next], phasedSpec(next).name)}`; }
+        else sec = Math.max(sec, ...mates.map(k => phasedSpec(k).rest));
+      }
+      startTimer(sec, lbl);
     }
     saveDraft(); return;
   }
