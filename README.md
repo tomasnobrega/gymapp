@@ -16,7 +16,7 @@ App de treino em um único arquivo (`index.html`), sem dependências, feito pra 
 
 ## O ciclo de 6 semanas
 
-Cada treino tem um **exercício principal** (feito sozinho, com descanso cheio) e dois **pares** (dois exercícios alternados no mesmo lugar da academia). O core fica dentro do finisher.
+Cada treino tem um **exercício principal** (feito sozinho, com descanso cheio) e dois **pares** (dois exercícios alternados no mesmo lugar da academia). Cada par fica num card só, com as séries intercaladas: o ✓ da primeira dispara 20 s pra trocar de exercício, e o ✓ da segunda dispara o descanso da rodada. O core fica dentro do finisher.
 
 | Sem | Fase | Principal | Pares | Isolados | Descanso (princ./pares/iso) | Técnica |
 |----:|------|-----------|-------|----------|-------------:|---------|
