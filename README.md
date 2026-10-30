@@ -7,7 +7,7 @@ App de treino em um único arquivo (`index.html`), sem dependências, feito pra 
 - **Treinos A e B** (corpo inteiro) com aquecimento, um exercício principal, dois pares alternados e um **finisher** (WOD com core) no fim.
 - **Ciclo de 6 semanas** com periodização embutida: a cada semana o app muda séries, faixa de reps, descanso e técnica pra manter o estímulo crescente. No fim do ciclo, você manda treinos novos e inicia outro ciclo.
 - **Registro de cargas**: em cada exercício aparece o que você fez da última vez (kg × reps por série) e os campos já vêm preenchidos com a carga anterior.
-- **Sugestão de carga**: quando a faixa de reps muda de uma semana pra outra, o app calcula a carga inicial pelo 1RM estimado da última sessão e já preenche. Na mesma faixa, se bateu o topo das reps em todas as séries, sugere subir a carga (toque pra aplicar). Na semana de Adaptação, sugere −15 %.
+- **Sugestão de carga**: usa o treino mais recente do exercício (a Adaptação conta; o deload não) e a série típica dele, não a mais pesada. Quando a faixa de reps muda, calcula a carga pelo 1RM estimado com 5 % de folga. Na mesma faixa, se bateu o topo das reps em todas as séries, sugere subir a carga (toque pra aplicar). Na semana de Adaptação, sugere −15 %.
 - **Timer de descanso**: o ✓ de cada série marca como feita e dispara o timer com o descanso do exercício naquela semana (principal, par ou isolado), com aviso sonoro e vibração.
 - **Histórico** por sessão, com volume total e detalhe das séries.
 - **Progresso** por exercício: melhor carga, 1RM estimado (Epley) e gráfico da evolução.
@@ -16,7 +16,7 @@ App de treino em um único arquivo (`index.html`), sem dependências, feito pra 
 
 ## O ciclo de 6 semanas
 
-Cada treino tem um **exercício principal** (feito sozinho, com descanso cheio) e dois **pares** (dois exercícios alternados no mesmo lugar da academia). Cada par fica num card só, com as séries intercaladas: o ✓ da primeira dispara 20 s pra trocar de exercício, e o ✓ da segunda dispara o descanso da rodada. O core fica dentro do finisher.
+Cada treino tem um **exercício principal** (feito sozinho, com descanso cheio) e dois **pares** (dois exercícios alternados no mesmo lugar da academia). Cada par fica num card só, com as séries intercaladas: o ✓ da primeira dispara o tempo de troca (45 s, ajustável em Ajustes) pra trocar de exercício, e o ✓ da segunda dispara o descanso da rodada. O core fica dentro do finisher.
 
 | Sem | Fase | Principal | Pares | Isolados | Descanso (princ./pares/iso) | Técnica |
 |----:|------|-----------|-------|----------|-------------:|---------|
