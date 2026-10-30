@@ -305,7 +305,7 @@ const WORKOUTS = [
    noFinisher = semana sem finisher
    ===================================================================== */
 const PHASES = [
-  { week: 1, name: 'Adaptação', main: { sets: 3, reps: [10, 10] }, comp: { sets: 3, reps: [10, 12] }, iso: { sets: 2, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 60, iso: 45 }, rpe: 'RPE 6–7 · 3–4 reps na reserva',
+  { week: 1, name: 'Adaptação', main: { sets: 3, reps: [10, 10] }, comp: { sets: 3, reps: [10, 12] }, iso: { sets: 2, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 60, iso: 45 }, rpe: 'RPE 6–7 · 3–4 reps na reserva', refOk: true,
     technique: { title: 'Aprender os exercícios', desc: 'Semana leve pra pegar o jeito dos exercícios novos e acertar a montagem dos pares no banco e nas máquinas. Carga ~85 % da última, longe da falha.' }, loadPct: 0.85 },
   { week: 2, name: 'Volume', main: { sets: 4, reps: [8, 10] }, comp: { sets: 3, reps: [10, 12] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 7–8 · 2–3 reps na reserva',
     technique: { title: 'Tempo controlado', desc: '3 s na descida, sobe forte. Nos pares, faz uma série de cada e descansa o tempo indicado entre um e outro.' } },
@@ -327,7 +327,8 @@ const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSO
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 let DB = load(LS_DB, { version: 1, sessions: [] });
-let CFG = Object.assign({ step: 2.5, cycleStart: null }, load(LS_CFG, {}));
+let CFG = Object.assign({ step: 2.5, swap: 45, cycleStart: null }, load(LS_CFG, {}));
+const pairSwap = () => CFG.swap; // segundos pra trocar de exercício dentro de um par
 if (!CFG.cycleStart) { CFG.cycleStart = todayISOInit(); save(LS_CFG, CFG); }
 function todayISOInit() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 let draft = load(LS_DRAFT, null);
@@ -366,7 +367,6 @@ const clampWeek = w => Math.min(Math.max(w, 1), CYCLE_WEEKS);
 const phaseOf = week => PHASES[clampWeek(week) - 1];
 const roundStep = w => Math.round(w / CFG.step) * CFG.step;
 
-const PAIR_SWAP = 20; // segundos pra trocar de exercício dentro de um par
 const shortName = (ex, name) => ex.short || name.split(/[\s/(]/)[0];
 
 /* descanso por papel do exercício (main = principal, comp = pares, iso = isolados) */
@@ -402,7 +402,7 @@ const setLabel = (s, j) => s.time ? null : s.scheme === 'topset' ? (j === 0 ? 'T
 /* histórico por exercício (mais recente primeiro) */
 function historyFor(key) {
   const out = [];
-  for (const s of DB.sessions) for (const e of s.exercises) if (e.key === key) out.push({ date: s.date, ts: s.ts, workout: s.workout, ...e });
+  for (const s of DB.sessions) for (const e of s.exercises) if (e.key === key) out.push({ date: s.date, ts: s.ts, workout: s.workout, phase: s.phase, ...e });
   return out.sort((a, b) => b.ts - a.ts);
 }
 const lastFor = key => historyFor(key)[0] || null;
@@ -416,6 +416,8 @@ const setsTxt = e => {
   }
   return byW.map(g => `${kg(g.w)} kg × ${g.r.join(', ')}`).join(' · ');
 };
+// série típica da sessão: a de 1RM estimado mediano (uma série pesada isolada não puxa a sugestão pra cima)
+const typicalSet = e => { const ss = e.sets.slice().sort((a, b) => e1rm(a.w, a.r) - e1rm(b.w, b.r)); return ss[Math.floor((ss.length - 1) / 2)]; };
 const bestSet = e => e.sets.reduce((b, s) => (!b || s.w > b.w || (s.w === b.w && s.r > b.r)) ? s : b, null);
 const e1rm = (w, r) => r === 1 ? w : w * (1 + r / 30);
 const volume = sess => sess.exercises.reduce((t, e) => e.type === 'weight' ? t + e.sets.reduce((a, s) => a + s.w * s.r, 0) : t, 0);
@@ -427,8 +429,9 @@ function loadHint(spec) {
   const hist = historyFor(spec.name);
   const last = hist[0];
   if (!last || last.type !== 'weight') return null;
-  const ref = hist.find(h => !h.deload) || last;     // ignora semana de deload como referência
-  const b = bestSet(ref), rm = e1rm(b.w, b.r);
+  const isRef = h => !h.deload || PHASES.some(p => p.refOk && p.name === h.phase);
+  const ref = hist.find(isRef) || last;               // ignora deload de verdade; Adaptação conta
+  const b = typicalSet(ref), rm = e1rm(b.w, b.r) * 0.95;
   const [lo, hi] = spec.reps, ph = spec.phase;
   if (ph.loadPct) {
     const w = roundStep(b.w * ph.loadPct);
@@ -437,7 +440,7 @@ function loadHint(spec) {
   if (b.r > hi + 1 || b.r < lo - 1) {
     const w = roundStep(rm / (1 + hi / 30));
     const dir = b.r > hi + 1 ? 'menos reps, mais carga' : 'mais reps, menos carga';
-    return { cls: 'info', auto: true, w, txt: `Nova faixa ${lo}–${hi} reps (${dir}). Pelo 1RM estimado de ${kg(Math.round(rm))} kg, começa com <b>${kg(w)} kg</b>${spec.scheme === 'topset' ? ` no top set e ${kg(roundStep(w * spec.backoff.pct))} kg nos back-off` : ''}.` };
+    return { cls: 'info', auto: true, w, txt: `Nova faixa ${lo}–${hi} reps (${dir}). Pelo seu último treino (${kg(b.w)} kg × ${b.r}), começa com <b>${kg(w)} kg</b>${spec.scheme === 'topset' ? ` no top set e ${kg(roundStep(w * spec.backoff.pct))} kg nos back-off` : ''}.` };
   }
   const allTop = ref.sets.length >= 2 && ref.sets.every(s => s.r >= hi);
   const anyLow = ref.sets.some(s => s.r < lo);
@@ -577,7 +580,7 @@ function renderTrain(v) {
     // par: um card só, com as séries intercaladas (1ª de um, 1ª do outro, 2ª de um...)
     const rest = Math.max(...group.map(k => phasedSpec(k).rest));
     const shorts = group.map(k => shortName(w.exercises[k], phasedSpec(k).name));
-    html += `<div class="card pair"><div class="pairtag">${esc(ex.pair)} · faz um, troca pro outro (${PAIR_SWAP}s) e descansa ${rest}s depois da rodada</div>`;
+    html += `<div class="card pair"><div class="pairtag">${esc(ex.pair)} · faz um, troca pro outro (${pairSwap()}s) e descansa ${rest}s depois da rodada</div>`;
     group.forEach(k => { html += `<div class="pex">${exHead(k, false)}</div>`; });
     html += `<div class="sets">${setHead(group[0], true)}`;
     const rounds = Math.max(...group.map(k => draft.ex[k].sets.length));
@@ -714,6 +717,7 @@ function renderSettings(v) {
     <div class="section">Preferências</div>
     <div class="card"><div class="fields">
       <div class="field"><label>Incremento de carga (kg)</label><input type="text" inputmode="decimal" id="cfg-step" value="${esc(CFG.step)}"></div>
+      <div class="field"><label>Troca no par (s)</label><input type="number" inputmode="numeric" id="cfg-swap" value="${esc(CFG.swap)}"></div>
     </div><div class="small faint" style="margin-top:8px">Usado na sugestão “tenta X kg” e no arredondamento das cargas calculadas. O ✓ em cada série inicia o timer com o descanso do exercício nesta semana.</div></div>
     <div class="section">Treinos</div>
     <div class="card small muted">Os treinos ficam no bloco <code>WORKOUTS</code> e as fases do ciclo no bloco <code>PHASES</code>, no início do arquivo <code>index.html</code>. Para alterar, edite lá ou peça pro Claude.</div>
@@ -815,6 +819,7 @@ document.addEventListener('input', e => {
   if (t.dataset.fin) { draft.fin[t.dataset.fin] = t.value; saveDraft(); return; }
   if (t.hasAttribute('data-notes')) { draft.notes = t.value; saveDraft(); return; }
   if (t.hasAttribute('data-date')) { if (t.value) { draft.date = t.value; saveDraft(); header(workout(draft.workout).name, workout(draft.workout).subtitle + ' · ' + weekday(draft.date) + ' ' + fmtDate(draft.date), $('#h-right').innerHTML); } return; }
+  if (t.id === 'cfg-swap') { const n = num(t.value); if (n >= 0) { CFG.swap = n; save(LS_CFG, CFG); } return; }
   if (t.id === 'cfg-step') { const n = num(t.value); if (n > 0) { CFG.step = n; save(LS_CFG, CFG); } return; }
   if (t.id === 'cfg-cycle') { if (t.value) { CFG.cycleStart = t.value; save(LS_CFG, CFG); render(); } return; }
 });
@@ -859,7 +864,7 @@ document.addEventListener('click', e => {
       if (ex.pair) {
         const mates = exs.map((x, k) => k).filter(k => k !== i && exs[k].pair === ex.pair);
         const next = mates.find(k => j < draft.ex[k].sets.length && !draft.ex[k].done[j]);
-        if (next != null) { sec = PAIR_SWAP; lbl = `Troca: ${shortName(exs[next], phasedSpec(next).name)}`; }
+        if (next != null) { sec = pairSwap(); lbl = `Troca: ${shortName(exs[next], phasedSpec(next).name)}`; }
         else sec = Math.max(sec, ...mates.map(k => phasedSpec(k).rest));
       }
       startTimer(sec, lbl);
