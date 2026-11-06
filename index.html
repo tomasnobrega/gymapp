@@ -253,7 +253,7 @@ const WORKOUTS = [
       { name: 'Agachamento', alt: ['Agachamento', 'Leg press'], role: 'main' },
       { name: 'Supino reto', each: 'com halteres', role: 'comp', pair: 'Par 1' },
       { name: 'Remada serrote', short: 'Serrote', each: 'cada braço, apoiado no banco', role: 'comp', pair: 'Par 1' },
-      { name: 'Desenvolvimento com halteres', short: 'Desenv.', role: 'comp', pair: 'Par 2' },
+      { name: 'Desenvolvimento com halteres', alt: ['Desenvolvimento com halteres', 'Desenvolvimento com barra'], short: 'Desenv.', role: 'comp', pair: 'Par 2' },
       { name: 'Elevação lateral', role: 'iso', pair: 'Par 2' },
     ],
     finisher: {
@@ -309,12 +309,12 @@ const PHASES = [
     technique: { title: 'Aprender os exercícios', desc: 'Semana leve pra pegar o jeito dos exercícios novos e acertar a montagem dos pares no banco e nas máquinas. Carga ~85 % da última, longe da falha.' }, loadPct: 0.85 },
   { week: 2, name: 'Volume', main: { sets: 4, reps: [8, 10] }, comp: { sets: 3, reps: [10, 12] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 7–8 · 2–3 reps na reserva',
     technique: { title: 'Tempo controlado', desc: '3 s na descida, sobe forte. Nos pares, faz uma série de cada e descansa o tempo indicado entre um e outro.' } },
-  { week: 3, name: 'Volume +', main: { sets: 4, reps: [8, 10] }, comp: { sets: 4, reps: [8, 10] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 8 · 2 reps na reserva',
+  { week: 3, name: 'Volume +', main: { sets: 4, reps: [8, 10] }, comp: { sets: 3, reps: [8, 10] }, iso: { sets: 3, reps: [12, 15] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 8 · 2 reps na reserva',
     technique: { title: 'Última série AMRAP', desc: 'Sobe a carga onde bateu o topo das reps. Na última série de cada exercício vai até 1 rep na reserva e anota quantas saíram.' }, lastLabel: 'AMRAP' },
-  { week: 4, name: 'Força', main: { sets: 4, reps: [6, 8] }, comp: { sets: 4, reps: [8, 10] }, iso: { sets: 3, reps: [10, 12] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 8–9',
+  { week: 4, name: 'Força', main: { sets: 4, reps: [6, 8] }, comp: { sets: 3, reps: [8, 10] }, iso: { sets: 3, reps: [10, 12] }, timeBonus: 0, rest: { main: 120, comp: 75, iso: 45 }, rpe: 'RPE 8–9',
     technique: { title: 'Pausa no principal', desc: 'Carga sobe. No exercício principal, 1 s de pausa no ponto mais difícil (fundo do agacho, barra abaixo do joelho no stiff).' } },
   { week: 5, name: 'Força +', main: { sets: 4, reps: [5, 6] }, comp: { sets: 3, reps: [6, 8] }, iso: { sets: 3, reps: [10, 12] }, timeBonus: 0, rest: { main: 150, comp: 90, iso: 45 }, rpe: 'RPE 8–9 · 1–2 reps na reserva',
-    technique: { title: 'Rest-pause na última', desc: 'Na última série chega perto da falha, descansa 15 s e faz mais 2–3 reps com a mesma carga. Finisher curto e forte.' }, lastLabel: 'RP' },
+    technique: { title: 'Rest-pause na última', desc: 'Na última série chega perto da falha, descansa 15 s e faz mais 2–3 reps com a mesma carga. Finisher opcional.' }, lastLabel: 'RP' },
   { week: 6, name: 'Pico', main: { sets: 3, reps: [3, 5] }, comp: { sets: 3, reps: [6, 8] }, iso: { sets: 2, reps: [10, 12] }, timeBonus: 0, rest: { main: 150, comp: 90, iso: 45 }, rpe: 'RPE 9 · 1 rep na reserva',
     technique: { title: 'Top set + back-off, sem finisher', desc: 'No principal, 1 série pesada de 3–5 reps (o recorde) e 2 de back-off com −10 %, 5–6 reps. Sem finisher: o foco da semana é só nos pesos. Fim do ciclo: o próximo começa pela Adaptação.' }, scheme: 'topset', backoff: { pct: 0.9, reps: [5, 6] }, noFinisher: true },
 ];
@@ -595,10 +595,11 @@ function renderTrain(v) {
   if (f) {
     const lastF = lastFor('Finisher ' + w.id + ' · ' + f.name);
     const fmt = f.weeks && f.weeks[draft.week - 1] ? f.weeks[draft.week - 1] : `${f.format}${f.cap ? ` · cap ${f.cap}` : ''}`;
-    html += `<div class="card fin"><div class="badge">Finisher · cardio com peso</div>
+    html += `<div class="card fin"><div class="badge">Finisher · opcional</div>
       <div class="ex-title">${esc(f.name)}</div><div class="fmt"><b style="color:var(--text)">${esc(fmt)}</b> <span class="faint">· semana ${draft.week}</span></div>
       <ul class="mov">${f.movements.map(m => `<li>${esc(m)}</li>`).join('')}</ul>
       ${f.tip ? `<div class="hint info">💡 <div>${esc(f.tip)}</div></div>` : ''}
+      <div class="small muted" style="margin-top:8px">Cansado? Troca por 10 min de esteira ou bike leve e anota em “Como foi”.</div>
       ${lastF ? `<div class="last"><span>Última · ${fmtDate(lastF.date)}${lastF.week ? ` · S${lastF.week}` : ''}</span><b>${esc(setsTxt(lastF))}</b>${lastF.notes ? `<span class="faint">“${esc(lastF.notes)}”</span>` : ''}</div>` : ''}
       <div class="fields">
         <div class="field"><label>${f.score === 'time' ? 'Tempo (mm:ss)' : 'Rounds + reps'}</label><input data-fin="score" placeholder="${f.score === 'time' ? '11:32' : '4 + 12'}" value="${esc(draft.fin.score)}"></div>
